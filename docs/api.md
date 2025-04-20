@@ -262,6 +262,76 @@ Analyze an RPG character sheet.
 }
 ```
 
+## Visualization Endpoints
+
+### Generate Visualization
+```bash
+POST /visualize
+```
+Generate a visualization from analysis data.
+
+**Request Body:**
+```json
+{
+    "data": {
+        // Analysis data (varies by visualization type)
+    },
+    "visualization_type": "network|temporal|comparative",
+    "format": "png",
+    "enhanced": false
+}
+```
+
+**Parameters:**
+- `data` (required): Analysis data to visualize
+- `visualization_type` (required): Type of visualization to generate
+  - `network`: Character network visualization
+  - `temporal`: Temporal analysis visualization
+  - `comparative`: Comparative analysis visualization
+- `format` (optional): Output format (default: "png")
+- `enhanced` (optional): Enable enhanced visualization features (default: false)
+
+**Response:**
+```json
+{
+    "image": "base64-encoded-image-data",
+    "format": "png",
+    "metadata": {
+        "type": "network|temporal|comparative",
+        // Additional metadata based on visualization type
+    }
+}
+```
+
+### Get Visualization Types
+```bash
+GET /visualization/types
+```
+Get available visualization types and their capabilities.
+
+**Response:**
+```json
+{
+    "types": [
+        {
+            "name": "network",
+            "description": "Character network visualization",
+            "supports_enhanced": true
+        },
+        {
+            "name": "temporal",
+            "description": "Temporal analysis visualization",
+            "supports_enhanced": true
+        },
+        {
+            "name": "comparative",
+            "description": "Comparative analysis visualization",
+            "supports_enhanced": true
+        }
+    ]
+}
+```
+
 ## Usage Examples
 
 ### Curl Examples
@@ -392,6 +462,65 @@ curl -X POST "http://localhost:8000/analyze/character" \
      }'
 ```
 
+### Network Visualization
+```bash
+curl -X POST http://localhost:8000/visualize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "nodes": [
+        {"id": "Paul", "connections": 5, "role": "protagonist", "work": "Dune", "community": 1},
+        {"id": "Jessica", "connections": 4, "role": "mentor", "work": "Dune", "community": 1}
+      ],
+      "edges": [
+        {"source": "Paul", "target": "Jessica"}
+      ],
+      "communities": [
+        {"id": 1, "size": 2, "density": 0.5, "characters": ["Paul", "Jessica"]}
+      ]
+    },
+    "visualization_type": "network",
+    "format": "png",
+    "enhanced": true
+  }'
+```
+
+### Temporal Visualization
+```bash
+curl -X POST http://localhost:8000/visualize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "timeline": [
+        {"year": "1965", "metrics": {"theme_count": 5, "character_count": 10}},
+        {"year": "1975", "metrics": {"theme_count": 7, "character_count": 15}}
+      ]
+    },
+    "visualization_type": "temporal",
+    "format": "png",
+    "enhanced": true
+  }'
+```
+
+### Comparative Visualization
+```bash
+curl -X POST http://localhost:8000/visualize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "works": ["Dune", "Foundation"],
+      "metrics": {
+        "theme_count": [5, 6],
+        "character_count": [10, 12]
+      },
+      "similarity_matrix": [[1.0, 0.8], [0.8, 1.0]]
+    },
+    "visualization_type": "comparative",
+    "format": "png",
+    "enhanced": true
+  }'
+```
+
 ### Python Examples
 
 #### Comparative Analysis
@@ -517,4 +646,29 @@ print(result)
 ### RPG Notes
 - The `system` field is required for proper analysis
 - Character sheet analysis supports multiple RPG systems
-- Recommendations are tailored to the specified RPG system 
+- Recommendations are tailored to the specified RPG system
+
+1. **Network Visualization**:
+   - Nodes represent characters
+   - Edges represent relationships
+   - Node size indicates connection count
+   - Colors indicate communities
+   - Enhanced mode adds labels for central nodes
+
+2. **Temporal Visualization**:
+   - Shows metrics over time
+   - Enhanced mode includes theme evolution
+   - Supports multiple metrics
+   - Includes grid and legend
+
+3. **Comparative Visualization**:
+   - Bar charts for metric comparison
+   - Enhanced mode shows similarity matrix
+   - Supports multiple works and metrics
+   - Color-coded for clarity
+
+4. **General Notes**:
+   - All visualizations return base64-encoded images
+   - Enhanced mode provides more detailed visualizations
+   - Metadata includes type-specific information
+   - PNG format is recommended for best quality 
