@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import networkx as nx
 import seaborn as sns
 import numpy as np
+import os
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -18,23 +20,46 @@ class VisualizationAgent(BaseAgent):
         super().__init__("visualization")
         self.system_prompt = """You are an expert in creating visualizations for literary analysis.
 Your task is to generate clear and informative visual representations of character networks, temporal patterns, and comparative analysis results."""
+        self.output_dir = "visualizations"
+        os.makedirs(self.output_dir, exist_ok=True)
     
     async def generate_visualization(
         self,
         data: Dict[str, Any],
         visualization_type: str,
         format: str = "png",
-        enhanced: bool = False
+        enhanced: bool = False,
+        save_to_disk: bool = False
     ) -> Dict[str, Any]:
         """Generate a visualization based on the data and type."""
         if visualization_type == "network":
-            return await self._generate_network_visualization(data, format, enhanced)
+            result = await self._generate_network_visualization(data, format, enhanced)
         elif visualization_type == "temporal":
-            return await self._generate_temporal_visualization(data, format, enhanced)
+            result = await self._generate_temporal_visualization(data, format, enhanced)
         elif visualization_type == "comparative":
-            return await self._generate_comparative_visualization(data, format, enhanced)
+            result = await self._generate_comparative_visualization(data, format, enhanced)
         else:
             raise ValueError(f"Unsupported visualization type: {visualization_type}")
+        
+        if save_to_disk:
+            self._save_visualization(result, visualization_type)
+        
+        return result
+    
+    def _save_visualization(self, result: Dict[str, Any], visualization_type: str) -> str:
+        """Save visualization to disk and return the file path."""
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{visualization_type}_{timestamp}.{result['format']}"
+        filepath = os.path.join(self.output_dir, filename)
+        
+        # Decode base64 image and save to file
+        image_data = base64.b64decode(result["image"])
+        with open(filepath, "wb") as f:
+            f.write(image_data)
+        
+        logger.info(f"Saved visualization to {filepath}")
+        return filepath
     
     async def _generate_network_visualization(
         self,
