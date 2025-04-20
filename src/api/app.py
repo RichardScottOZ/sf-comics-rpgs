@@ -46,6 +46,7 @@ class ComparativeAnalysisRequest(BaseModel):
     works: List[Dict[str, Any]]
     analysis_type: str
     model: Optional[str] = None
+    force_refresh: Optional[bool] = False
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -168,7 +169,8 @@ async def compare_works(request: ComparativeAnalysisRequest):
         result = await comparative_agent.compare_works(
             works=request.works,
             analysis_type=request.analysis_type,
-            model=request.model
+            model=request.model,
+            force_refresh=request.force_refresh
         )
         return result
     except Exception as e:
@@ -181,7 +183,8 @@ async def compare_world_building(request: ComparativeAnalysisRequest):
         result = await comparative_agent.compare_works(
             works=request.works,
             analysis_type="world_building",
-            model=request.model
+            model=request.model,
+            force_refresh=request.force_refresh
         )
         return result
     except Exception as e:
@@ -194,7 +197,8 @@ async def compare_themes(request: ComparativeAnalysisRequest):
         result = await comparative_agent.compare_works(
             works=request.works,
             analysis_type="themes",
-            model=request.model
+            model=request.model,
+            force_refresh=request.force_refresh
         )
         return result
     except Exception as e:
@@ -207,7 +211,8 @@ async def compare_characters(request: ComparativeAnalysisRequest):
         result = await comparative_agent.compare_works(
             works=request.works,
             analysis_type="characters",
-            model=request.model
+            model=request.model,
+            force_refresh=request.force_refresh
         )
         return result
     except Exception as e:
@@ -220,7 +225,8 @@ async def compare_plot(request: ComparativeAnalysisRequest):
         result = await comparative_agent.compare_works(
             works=request.works,
             analysis_type="plot",
-            model=request.model
+            model=request.model,
+            force_refresh=request.force_refresh
         )
         return result
     except Exception as e:
