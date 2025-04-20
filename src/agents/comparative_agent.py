@@ -2,7 +2,6 @@ from typing import Dict, Any, List, Optional
 from .base_agent import BaseAgent
 from ..prompts.prompt_engineer import PromptEngineer
 from ..context.historical_context import HistoricalContext
-import hash
 import logging
 
 logger = logging.getLogger(__name__)
@@ -43,7 +42,7 @@ Your task is to analyze and compare multiple works based on specific aspects, ta
             historical_context=historical_contexts[0] if historical_contexts else None
         )
         
-        # Generate cache key
+        # Generate cache key using built-in hash function
         cache_key = f"{self.agent_type}_{hash(comparison_prompt)}"
         
         # Check cache unless force_refresh is True
