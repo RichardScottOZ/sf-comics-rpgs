@@ -3,6 +3,7 @@ import logging
 import wikipediaapi
 import requests
 from datetime import datetime
+from bs4 import BeautifulSoup
 from .base_agent import BaseAgent
 
 logger = logging.getLogger(__name__)
@@ -301,6 +302,203 @@ class DataSourceAgent(BaseAgent):
             
         except Exception as e:
             logger.error(f"Error fetching OpenLibrary data: {str(e)}")
+            return {
+                "error": str(e),
+                "exists": False
+            }
+            
+    def get_isfdb_data(self, title: str, author: Optional[str] = None) -> Dict[str, Any]:
+        """Get book data from the Internet Science Fiction Database.
+        
+        Args:
+            title: Book title
+            author: Optional author name
+            
+        Returns:
+            Dictionary containing ISFDB data
+        """
+        cache_key = f"isfdb_{title}_{author}"
+        if cache_key in self.cache:
+            cached_data, timestamp = self.cache[cache_key]
+            if (datetime.now() - timestamp).total_seconds() < self.cache_ttl:
+                return cached_data
+                
+        try:
+            # ISFDB search endpoint
+            search_url = "https://www.isfdb.org/cgi-bin/search.cgi"
+            params = {
+                "title": title,
+                "author": author if author else "",
+                "type": "Title"  # Search by title
+            }
+            
+            response = requests.get(search_url, params=params)
+            response.raise_for_status()
+            
+            # Parse the search results
+            soup = BeautifulSoup(response.text, 'html.parser')
+            result = {
+                "title": title,
+                "author": author,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Find the first search result
+            search_results = soup.find_all('tr', class_='row0') + soup.find_all('tr', class_='row1')
+            if search_results:
+                first_result = search_results[0]
+                cells = first_result.find_all('td')
+                
+                if len(cells) >= 3:
+                    # Extract publication details
+                    pub_details = cells[2].get_text(strip=True)
+                    result.update({
+                        "publication_details": pub_details,
+                        "isfdb_url": f"https://www.isfdb.org{first_result.find('a')['href']}" if first_result.find('a') else None
+                    })
+                    
+                    # Get detailed information from the book page
+                    if result["isfdb_url"]:
+                        book_response = requests.get(result["isfdb_url"])
+                        book_soup = BeautifulSoup(book_response.text, 'html.parser')
+                        
+                        # Extract additional information
+                        book_info = {}
+                        
+                        # Get cover image if available
+                        cover_img = book_soup.find('img', class_='cover')
+                        if cover_img:
+                            book_info["cover_url"] = f"https://www.isfdb.org{cover_img['src']}"
+                            
+                        # Get publication history
+                        pub_history = []
+                        pub_table = book_soup.find('table', class_='publication')
+                        if pub_table:
+                            for row in pub_table.find_all('tr')[1:]:  # Skip header row
+                                cells = row.find_all('td')
+                                if len(cells) >= 4:
+                                    pub_history.append({
+                                        "publisher": cells[0].get_text(strip=True),
+                                        "format": cells[1].get_text(strip=True),
+                                        "date": cells[2].get_text(strip=True),
+                                        "price": cells[3].get_text(strip=True)
+                                    })
+                        book_info["publication_history"] = pub_history
+                        
+                        # Get awards if any
+                        awards = []
+                        awards_table = book_soup.find('table', class_='awards')
+                        if awards_table:
+                            for row in awards_table.find_all('tr')[1:]:  # Skip header row
+                                cells = row.find_all('td')
+                                if len(cells) >= 2:
+                                    awards.append({
+                                        "award": cells[0].get_text(strip=True),
+                                        "year": cells[1].get_text(strip=True)
+                                    })
+                        book_info["awards"] = awards
+                        
+                        result.update(book_info)
+            
+            self.cache[cache_key] = (result, datetime.now())
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error fetching ISFDB data: {str(e)}")
+            return {
+                "error": str(e),
+                "exists": False
+            }
+            
+    def get_isfdb_author(self, author_name: str) -> Dict[str, Any]:
+        """Get author information from the Internet Science Fiction Database.
+        
+        Args:
+            author_name: Author's name
+            
+        Returns:
+            Dictionary containing author information
+        """
+        cache_key = f"isfdb_author_{author_name}"
+        if cache_key in self.cache:
+            cached_data, timestamp = self.cache[cache_key]
+            if (datetime.now() - timestamp).total_seconds() < self.cache_ttl:
+                return cached_data
+                
+        try:
+            # ISFDB author search endpoint
+            search_url = "https://www.isfdb.org/cgi-bin/search.cgi"
+            params = {
+                "author": author_name,
+                "type": "Author"  # Search by author
+            }
+            
+            response = requests.get(search_url, params=params)
+            response.raise_for_status()
+            
+            # Parse the search results
+            soup = BeautifulSoup(response.text, 'html.parser')
+            result = {
+                "author": author_name,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Find the first search result
+            search_results = soup.find_all('tr', class_='row0') + soup.find_all('tr', class_='row1')
+            if search_results:
+                first_result = search_results[0]
+                author_link = first_result.find('a')
+                
+                if author_link:
+                    author_url = f"https://www.isfdb.org{author_link['href']}"
+                    result["isfdb_url"] = author_url
+                    
+                    # Get detailed author information
+                    author_response = requests.get(author_url)
+                    author_soup = BeautifulSoup(author_response.text, 'html.parser')
+                    
+                    # Extract author details
+                    author_info = {}
+                    
+                    # Get author photo if available
+                    photo = author_soup.find('img', class_='photo')
+                    if photo:
+                        author_info["photo_url"] = f"https://www.isfdb.org{photo['src']}"
+                        
+                    # Get bibliography
+                    bibliography = []
+                    pub_table = author_soup.find('table', class_='publication')
+                    if pub_table:
+                        for row in pub_table.find_all('tr')[1:]:  # Skip header row
+                            cells = row.find_all('td')
+                            if len(cells) >= 3:
+                                bibliography.append({
+                                    "title": cells[0].get_text(strip=True),
+                                    "publisher": cells[1].get_text(strip=True),
+                                    "year": cells[2].get_text(strip=True)
+                                })
+                    author_info["bibliography"] = bibliography
+                    
+                    # Get awards
+                    awards = []
+                    awards_table = author_soup.find('table', class_='awards')
+                    if awards_table:
+                        for row in awards_table.find_all('tr')[1:]:  # Skip header row
+                            cells = row.find_all('td')
+                            if len(cells) >= 2:
+                                awards.append({
+                                    "award": cells[0].get_text(strip=True),
+                                    "year": cells[1].get_text(strip=True)
+                                })
+                    author_info["awards"] = awards
+                    
+                    result.update(author_info)
+            
+            self.cache[cache_key] = (result, datetime.now())
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error fetching ISFDB author data: {str(e)}")
             return {
                 "error": str(e),
                 "exists": False
