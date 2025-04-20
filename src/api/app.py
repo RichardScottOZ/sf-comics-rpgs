@@ -103,6 +103,13 @@ class BookRequest(BaseModel):
     title: str
     author: Optional[str] = None
 
+class ISFDBRequest(BaseModel):
+    title: str
+    author: Optional[str] = None
+
+class ISFDBAuthorRequest(BaseModel):
+    author_name: str
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Redirect to the API documentation"""
@@ -454,6 +461,31 @@ async def get_openlibrary_data(request: BookRequest):
         result = data_source_agent.get_openlibrary_data(
             title=request.title,
             author=request.author
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/isfdb/data")
+async def get_isfdb_data(request: ISFDBRequest):
+    """Get book data from the Internet Science Fiction Database."""
+    try:
+        data_source_agent = DataSourceAgent()
+        result = data_source_agent.get_isfdb_data(
+            title=request.title,
+            author=request.author
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/isfdb/author")
+async def get_isfdb_author(request: ISFDBAuthorRequest):
+    """Get author information from the Internet Science Fiction Database."""
+    try:
+        data_source_agent = DataSourceAgent()
+        result = data_source_agent.get_isfdb_author(
+            author_name=request.author_name
         )
         return result
     except Exception as e:
