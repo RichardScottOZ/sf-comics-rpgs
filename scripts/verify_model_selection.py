@@ -6,6 +6,8 @@ import aiohttp
 from typing import Dict, Any
 import os
 import sys
+import subprocess
+import time
 
 # Create logs directory if it doesn't exist
 logs_dir = Path("logs")
@@ -28,6 +30,16 @@ class ModelVerifier:
         # Get model from environment or use default
         self.expected_model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-7b")
         self.timeout = aiohttp.ClientTimeout(total=10)  # 10 second timeout
+        self.available_models = [
+            "openai/gpt-4",
+            "openai/gpt-3.5-turbo",
+            "anthropic/claude-2",
+            "anthropic/claude-instant",
+            "google/palm-2",
+            "meta-llama/llama-2-70b",
+            "mistralai/mistral-7b",
+            "google/gemma-7b-it"
+        ]
         self.test_cases = [
             {
                 "endpoint": "/analyze/comics",
@@ -55,9 +67,61 @@ class ModelVerifier:
             }
         ]
 
+    def check_server_process(self) -> bool:
+        """Check if the API server process is running."""
+        try:
+            # Check if uvicorn process is running
+            result = subprocess.run(
+                ["ps", "aux" if sys.platform != "win32" else "tasklist"],
+                capture_output=True,
+                text=True
+            )
+            return "uvicorn" in result.stdout or "python" in result.stdout
+        except Exception:
+            return False
+
+    def start_server(self) -> bool:
+        """Attempt to start the API server."""
+        logger.info("Attempting to start API server...")
+        try:
+            # Start the server in a new process
+            server_process = subprocess.Popen(
+                ["uvicorn", "src.api.app:app", "--host", "0.0.0.0", "--port", "8000"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            
+            # Wait a bit for the server to start
+            time.sleep(5)
+            
+            # Check if the process is still running
+            if server_process.poll() is None:
+                logger.info("✓ API server started successfully")
+                return True
+            else:
+                logger.error("✗ Failed to start API server")
+                return False
+        except Exception as e:
+            logger.error(f"✗ Error starting API server: {str(e)}")
+            return False
+
     async def check_server_availability(self) -> bool:
         """Check if the API server is available."""
         logger.info("\nChecking API server availability...")
+        
+        # First check if server process is running
+        if not self.check_server_process():
+            logger.warning("API server process not found")
+            if not self.start_server():
+                logger.error("""
+✗ Could not start API server. Please ensure:
+1. You have uvicorn installed: pip install uvicorn
+2. The API server can be started with: uvicorn src.api.app:app --host 0.0.0.0 --port 8000
+3. Port 8000 is available
+""")
+                return False
+
         try:
             async with aiohttp.ClientSession(timeout=self.timeout) as session:
                 logger.info(f"Testing connection to {self.base_url}/info")
@@ -70,10 +134,21 @@ class ModelVerifier:
                         return False
         except aiohttp.ClientError as e:
             logger.error(f"✗ Could not connect to API server: {str(e)}")
-            logger.error("Please make sure the API server is running on http://localhost:8000")
+            logger.error("""
+Please ensure:
+1. The API server is running on http://localhost:8000
+2. No firewall is blocking the connection
+3. The server is properly configured
+""")
             return False
         except asyncio.TimeoutError:
             logger.error("✗ Connection to API server timed out")
+            logger.error("""
+This could be because:
+1. The server is not running
+2. The server is not responding
+3. There are network issues
+""")
             return False
 
     async def verify_endpoint(self, endpoint: str, data: Dict[str, Any]) -> bool:
@@ -142,6 +217,21 @@ class ModelVerifier:
 
         return all(r["success"] for r in results)
 
+    async def verify_model(self) -> bool:
+        """Verify that the specified model is available."""
+        logger.info(f"\nVerifying model: {self.expected_model}")
+        
+        if self.expected_model not in self.available_models:
+            logger.error(f"✗ Model {self.expected_model} is not in the list of available models")
+            logger.info("\nAvailable models:")
+            for model in self.available_models:
+                logger.info(f"- {model}")
+            logger.info("\nPlease update your .env file with one of these models")
+            return False
+        
+        logger.info("✓ Model is available")
+        return True
+
     async def check_environment(self):
         """Check environment variables and configuration."""
         logger.info("\nChecking environment configuration...")
@@ -175,6 +265,10 @@ class ModelVerifier:
             for var in missing_vars:
                 logger.error(f"- {var}")
             logger.error("\nPlease add these variables to your .env file.")
+            return False
+
+        # Verify the model is available
+        if not await self.verify_model():
             return False
 
         logger.info(f"✓ Environment configuration verified. Using model: {self.expected_model}")
