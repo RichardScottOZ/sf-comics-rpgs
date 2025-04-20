@@ -73,7 +73,7 @@ class OpenRouterClient:
         self,
         content: str,
         analysis_type: str,
-        model: str = "mistralai/mistral-7b",  # Changed default to Mistral
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
         messages = [
             {
