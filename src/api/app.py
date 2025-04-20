@@ -99,6 +99,10 @@ class WikipediaRelatedRequest(BaseModel):
     title: str
     limit: Optional[int] = 5
 
+class BookRequest(BaseModel):
+    title: str
+    author: Optional[str] = None
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Redirect to the API documentation"""
@@ -413,6 +417,45 @@ async def get_related_articles(request: WikipediaRelatedRequest):
             limit=request.limit
         )
         return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/goodreads/data")
+async def get_goodreads_data(request: BookRequest):
+    """Get book data from Goodreads."""
+    try:
+        data_source_agent = DataSourceAgent()
+        result = data_source_agent.get_goodreads_data(
+            title=request.title,
+            author=request.author
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/librarything/data")
+async def get_librarything_data(request: BookRequest):
+    """Get book data from LibraryThing."""
+    try:
+        data_source_agent = DataSourceAgent()
+        result = data_source_agent.get_librarything_data(
+            title=request.title,
+            author=request.author
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/openlibrary/data")
+async def get_openlibrary_data(request: BookRequest):
+    """Get book data from OpenLibrary."""
+    try:
+        data_source_agent = DataSourceAgent()
+        result = data_source_agent.get_openlibrary_data(
+            title=request.title,
+            author=request.author
+        )
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
