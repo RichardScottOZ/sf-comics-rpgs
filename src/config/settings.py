@@ -18,6 +18,10 @@ class Settings(BaseSettings):
         default=True,
         env="OPENROUTER_FORCE_MODEL"
     )
+    OPENROUTER_BASE_URL: str = Field(
+        default="https://openrouter.ai/api/v1",
+        env="OPENROUTER_BASE_URL"
+    )
     
     # Application Configuration
     APP_ENV: str = "development"

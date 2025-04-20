@@ -1,13 +1,12 @@
 from typing import Dict, Any, Optional, List
 import aiohttp
-import os
 from ..config.settings import settings
 
 class OpenRouterClient:
     def __init__(self):
-        self.api_key = os.getenv("OPENROUTER_API_KEY")
-        self.default_model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-7b")
-        self.force_model = os.getenv("OPENROUTER_FORCE_MODEL", "true").lower() == "true"
+        self.api_key = settings.OPENROUTER_API_KEY
+        self.default_model = settings.OPENROUTER_DEFAULT_MODEL
+        self.force_model = settings.OPENROUTER_FORCE_MODEL
         self.base_url = settings.OPENROUTER_BASE_URL
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
