@@ -12,7 +12,7 @@ class MonitoringAgent(BaseAgent):
     """Agent responsible for monitoring and detecting new content of interest."""
     
     def __init__(self):
-        super().__init__()
+        super().__init__(agent_type="monitoring")
         self.data_source_agent = DataSourceAgent()
         self.last_check_time = datetime.now()
         self.interest_profiles = {}  # Store user interest profiles
