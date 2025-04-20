@@ -5,7 +5,7 @@ This document explains how to select and verify models in the SFMCP system.
 ## Available Models
 
 ### Free Models (Recommended for Testing)
-- `mistralai/mistral-7b` (Default)
+- `mistralai/mistral-small-3.1-24b-instruct:free` (Default)
 - `google/gemma-7b-it`
 - `meta-llama/llama-2-70b`
 - `google/palm-2`
@@ -20,7 +20,7 @@ This document explains how to select and verify models in the SFMCP system.
 ### 1. Environment Variables
 Add to your `.env` file:
 ```env
-OPENROUTER_DEFAULT_MODEL=mistralai/mistral-7b
+OPENROUTER_DEFAULT_MODEL=mistralai/mistral-small-3.1-24b-instruct:free
 OPENROUTER_FORCE_MODEL=true
 ```
 
@@ -33,7 +33,7 @@ curl -X POST "http://localhost:8000/analyze/comics" \
      -H "Content-Type: application/json" \
      -d '{
            "content": "Your content here",
-           "model": "mistralai/mistral-7b",
+           "model": "mistralai/mistral-small-3.1-24b-instruct:free",
            "parameters": {
              "temperature": 0.7,
              "max_tokens": 1000
@@ -62,8 +62,8 @@ curl -X POST "http://localhost:8000/analyze/rpg" \
 ### 1. Check Logs
 The system logs model usage. Look for messages like:
 ```
-INFO: Making API request with model: mistralai/mistral-7b
-INFO: Successfully received response from mistralai/mistral-7b
+INFO: Making API request with model: mistralai/mistral-small-3.1-24b-instruct:free
+INFO: Successfully received response from mistralai/mistral-small-3.1-24b-instruct:free
 ```
 
 ### 2. Response Verification
@@ -71,7 +71,7 @@ Check the response for model information:
 ```json
 {
     "analysis": {
-        "model": "mistralai/mistral-7b",
+        "model": "mistralai/mistral-small-3.1-24b-instruct:free",
         "provider": "Mistral",
         ...
     }
@@ -104,7 +104,7 @@ curl -X POST "http://localhost:8000/analyze/comics" \
      -H "Content-Type: application/json" \
      -d '{
            "content": "Your content here",
-           "model": "mistralai/mistral-7b",
+           "model": "mistralai/mistral-small-3.1-24b-instruct:free",
            "parameters": {
              "temperature": 0.9,
              "max_tokens": 1500
@@ -116,7 +116,7 @@ curl -X POST "http://localhost:8000/analyze/comics" \
      -H "Content-Type: application/json" \
      -d '{
            "content": "Your content here",
-           "model": "mistralai/mistral-7b",
+           "model": "mistralai/mistral-small-3.1-24b-instruct:free",
            "parameters": {
              "temperature": 0.3,
              "max_tokens": 800
@@ -161,6 +161,6 @@ curl -X POST "http://localhost:8000/analyze/comics" \
      -H "Content-Type: application/json" \
      -d '{
            "content": "Test content",
-           "model": "mistralai/mistral-7b"
+           "model": "mistralai/mistral-small-3.1-24b-instruct:free"
          }' | jq '.analysis.model'
 ``` 
