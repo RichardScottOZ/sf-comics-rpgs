@@ -6,9 +6,7 @@ import aiohttp
 from typing import Dict, Any
 import os
 import sys
-import subprocess
 import time
-import psutil
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
@@ -50,32 +48,6 @@ class ModelVerifier:
             "mistralai/mistral-7b",
             "google/gemma-7b-it"
         ]
-        self.test_cases = [
-            {
-                "endpoint": "/analyze/comics",
-                "data": {
-                    "content": "Test Superman comic analysis",
-                    "title": "Superman #1",
-                    "publisher": "DC Comics"
-                }
-            },
-            {
-                "endpoint": "/analyze/sf",
-                "data": {
-                    "content": "Test science fiction analysis",
-                    "title": "Test Novel",
-                    "author": "Test Author"
-                }
-            },
-            {
-                "endpoint": "/analyze/rpg",
-                "data": {
-                    "content": "Test RPG content analysis",
-                    "system": "D&D 5e",
-                    "source": "Player's Handbook"
-                }
-            }
-        ]
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -84,17 +56,6 @@ class ModelVerifier:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self.session:
             await self.session.close()
-
-    def is_api_running(self) -> bool:
-        """Check if the API server is already running."""
-        for proc in psutil.process_iter(['pid', 'name', 'cmdline']):
-            try:
-                cmdline = proc.info['cmdline']
-                if cmdline and 'uvicorn' in cmdline and 'src.api.app:app' in ' '.join(cmdline):
-                    return True
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
-        return False
 
     async def check_api_availability(self) -> bool:
         """Check if the API is available and responding."""
@@ -137,16 +98,11 @@ class ModelVerifier:
         # Check API server
         self.console.print("\n[bold]Checking API server availability...[/bold]")
         
-        if self.is_api_running():
-            self.console.print("[yellow]! API server is already running[/yellow]")
-            if await self.check_api_availability():
-                self.console.print("[green]✓ API server is responding[/green]")
-            else:
-                self.console.print("[red]✗ API server is not responding[/red]")
-                return False
+        if await self.check_api_availability():
+            self.console.print("[green]✓ API server is responding[/green]")
         else:
-            self.console.print("[yellow]! API server is not running[/yellow]")
-            self.console.print("[yellow]Please start the API server manually with:[/yellow]")
+            self.console.print("[red]✗ API server is not responding[/red]")
+            self.console.print("[yellow]Please ensure the API server is running with:[/yellow]")
             self.console.print("[yellow]uvicorn src.api.app:app --host 0.0.0.0 --port 8000[/yellow]")
             return False
 
