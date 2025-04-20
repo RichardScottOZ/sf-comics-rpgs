@@ -27,15 +27,15 @@ async def test_model_selection():
             content=test_content,
             system_prompt="Test system prompt"
         )
-        assert "mistralai/mistral-7b" in str(result), f"{agent_type} agent not using Mistral by default"
+        assert "mistralai/mistral-small-3.1-24b-instruct:free" in str(result), f"{agent_type} agent not using Mistral by default"
         
         # Test with explicit model
         result = await agent._get_analysis(
             content=test_content,
             system_prompt="Test system prompt",
-            model="mistralai/mistral-7b"
+            model="mistralai/mistral-small-3.1-24b-instruct:free"
         )
-        assert "mistralai/mistral-7b" in str(result), f"{agent_type} agent not respecting explicit model selection"
+        assert "mistralai/mistral-small-3.1-24b-instruct:free" in str(result), f"{agent_type} agent not respecting explicit model selection"
         
         logger.info(f"{agent_type} agent passed model selection tests")
 
