@@ -2,14 +2,22 @@ from pathlib import Path
 from typing import Optional
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+from pydantic import Field
 
 # Load environment variables
 load_dotenv()
 
 class Settings(BaseSettings):
-    # OpenRouter Configuration
-    OPENROUTER_API_KEY: str
-    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+    # OpenRouter configuration
+    OPENROUTER_API_KEY: str = Field(..., env="OPENROUTER_API_KEY")
+    OPENROUTER_DEFAULT_MODEL: str = Field(
+        default="mistralai/mistral-7b",
+        env="OPENROUTER_DEFAULT_MODEL"
+    )
+    OPENROUTER_FORCE_MODEL: bool = Field(
+        default=True,
+        env="OPENROUTER_FORCE_MODEL"
+    )
     
     # Application Configuration
     APP_ENV: str = "development"
@@ -20,9 +28,13 @@ class Settings(BaseSettings):
     DATA_DIR: Path = Path("./data")
     CACHE_DIR: Path = Path("./data/cache")
     
-    # API Configuration
-    API_HOST: str = "localhost"
-    API_PORT: int = 8000
+    # API configuration
+    API_HOST: str = Field(default="0.0.0.0", env="API_HOST")
+    API_PORT: int = Field(default=8000, env="API_PORT")
+    
+    # Cache configuration
+    CACHE_ENABLED: bool = Field(default=True, env="CACHE_ENABLED")
+    CACHE_TTL: int = Field(default=3600, env="CACHE_TTL")  # 1 hour in seconds
     
     class Config:
         env_file = ".env"
