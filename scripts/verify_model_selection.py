@@ -5,18 +5,19 @@ from pathlib import Path
 import aiohttp
 from typing import Dict, Any
 import os
+import sys
 
 # Create logs directory if it doesn't exist
 logs_dir = Path("logs")
 logs_dir.mkdir(exist_ok=True)
 
-# Configure logging
+# Configure logging with UTF-8 encoding
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('logs/model_verification.log'),
-        logging.StreamHandler()
+        logging.FileHandler('logs/model_verification.log', encoding='utf-8'),
+        logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)
@@ -63,12 +64,15 @@ class ModelVerifier:
                     headers={"Content-Type": "application/json"}
                 ) as response:
                     if response.status != 200:
+                        error_text = await response.text()
                         logger.error(f"Error in {endpoint}: {response.status}")
+                        logger.error(f"Response: {error_text}")
                         return False
 
                     result = await response.json()
                     if "analysis" not in result or "model" not in result["analysis"]:
                         logger.error(f"Missing model information in {endpoint} response")
+                        logger.error(f"Response: {json.dumps(result, indent=2)}")
                         return False
 
                     used_model = result["analysis"]["model"]
@@ -93,10 +97,10 @@ class ModelVerifier:
                 "success": success
             })
 
-        # Print summary
+        # Print summary using ASCII characters for Windows compatibility
         logger.info("\nVerification Summary:")
         for result in results:
-            status = "✓" if result["success"] else "✗"
+            status = "[PASS]" if result["success"] else "[FAIL]"
             logger.info(f"{status} {result['endpoint']}")
 
         return all(r["success"] for r in results)
