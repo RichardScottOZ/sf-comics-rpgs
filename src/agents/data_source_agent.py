@@ -509,4 +509,111 @@ class DataSourceAgent(BaseAgent):
             return {
                 "error": str(e),
                 "exists": False
+            }
+            
+    def get_rpggeek_data(self, title: str, author: Optional[str] = None) -> Dict[str, Any]:
+        """Get RPG data from RPGGeek (via BGG XML API).
+        
+        Args:
+            title: RPG title
+            author: Optional author/designer name
+            
+        Returns:
+            Dictionary containing RPG data
+        """
+        cache_key = f"rpggeek_{title}_{author}"
+        if cache_key in self.cache:
+            cached_data, timestamp = self.cache[cache_key]
+            if (datetime.now() - timestamp).total_seconds() < self.cache_ttl:
+                return cached_data
+                
+        try:
+            # First search for the RPG
+            search_url = "https://www.rpggeek.com/xmlapi2/search"
+            params = {
+                "query": f"{title} {author}" if author else title,
+                "type": "rpgitem"
+            }
+            
+            search_response = requests.get(search_url, params=params)
+            search_response.raise_for_status()
+            
+            # Parse the search results
+            search_soup = BeautifulSoup(search_response.text, 'xml')
+            result = {
+                "title": title,
+                "author": author,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Get the first matching item
+            items = search_soup.find_all('item')
+            if items:
+                item = items[0]
+                item_id = item.get('id')
+                
+                # Get detailed information
+                detail_url = f"https://www.rpggeek.com/xmlapi2/thing"
+                detail_params = {
+                    "id": item_id,
+                    "stats": 1
+                }
+                
+                detail_response = requests.get(detail_url, params=detail_params)
+                detail_response.raise_for_status()
+                
+                detail_soup = BeautifulSoup(detail_response.text, 'xml')
+                item_detail = detail_soup.find('item')
+                
+                if item_detail:
+                    # Extract basic information
+                    result.update({
+                        "rpggeek_id": item_id,
+                        "rpggeek_url": f"https://www.rpggeek.com/rpgitem/{item_id}",
+                        "name": item_detail.find('name', type='primary').get('value'),
+                        "year_published": item_detail.find('yearpublished').get('value') if item_detail.find('yearpublished') else None,
+                        "min_players": item_detail.find('minplayers').get('value') if item_detail.find('minplayers') else None,
+                        "max_players": item_detail.find('maxplayers').get('value') if item_detail.find('maxplayers') else None,
+                        "playing_time": item_detail.find('playingtime').get('value') if item_detail.find('playingtime') else None,
+                        "min_age": item_detail.find('minage').get('value') if item_detail.find('minage') else None,
+                        "description": item_detail.find('description').text if item_detail.find('description') else None
+                    })
+                    
+                    # Extract links
+                    links = []
+                    for link in item_detail.find_all('link'):
+                        links.append({
+                            "type": link.get('type'),
+                            "id": link.get('id'),
+                            "value": link.get('value')
+                        })
+                    result["links"] = links
+                    
+                    # Extract statistics
+                    stats = item_detail.find('statistics')
+                    if stats:
+                        result.update({
+                            "rating": stats.find('average').get('value') if stats.find('average') else None,
+                            "rank": stats.find('ranks').find('rank', type='subtype').get('value') if stats.find('ranks') else None,
+                            "num_ratings": stats.find('usersrated').get('value') if stats.find('usersrated') else None,
+                            "num_comments": stats.find('numcomments').get('value') if stats.find('numcomments') else None
+                        })
+                    
+                    # Extract images
+                    images = []
+                    for image in item_detail.find_all('image'):
+                        images.append({
+                            "type": image.get('type'),
+                            "url": image.text
+                        })
+                    result["images"] = images
+            
+            self.cache[cache_key] = (result, datetime.now())
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error fetching RPGGeek data: {str(e)}")
+            return {
+                "error": str(e),
+                "exists": False
             } 
