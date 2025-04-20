@@ -427,7 +427,7 @@ class DataSourceAgent(BaseAgent):
                 
         try:
             # ISFDB author search endpoint with correct parameters
-            search_url = "https://www.isfdb.org/cgi-bin/search.cgi"
+            search_url = "https://www.isfdb.org/cgi-bin/se.cgi"
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -436,10 +436,8 @@ class DataSourceAgent(BaseAgent):
                 'Upgrade-Insecure-Requests': '1'
             }
             params = {
-                "q": author_name,
-                "type": "Author",
-                "action": "Search",
-                "format": "html"
+                "arg": author_name,
+                "type": "Name"
             }
             
             response = requests.get(search_url, params=params, headers=headers)
