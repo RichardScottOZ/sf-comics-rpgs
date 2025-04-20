@@ -278,7 +278,8 @@ Generate a visualization from analysis data.
     },
     "visualization_type": "network|temporal|comparative",
     "format": "png",
-    "enhanced": false
+    "enhanced": false,
+    "save_to_disk": false
 }
 ```
 
@@ -290,6 +291,7 @@ Generate a visualization from analysis data.
   - `comparative`: Comparative analysis visualization
 - `format` (optional): Output format (default: "png")
 - `enhanced` (optional): Enable enhanced visualization features (default: false)
+- `save_to_disk` (optional): Save visualization to disk (default: false)
 
 **Response:**
 ```json
@@ -301,6 +303,38 @@ Generate a visualization from analysis data.
         // Additional metadata based on visualization type
     }
 }
+```
+
+**Notes:**
+- When `save_to_disk` is true, visualizations are saved to the `visualizations` directory
+- Saved files are named with pattern: `{visualization_type}_{timestamp}.{format}`
+- Example: `network_20240314_123456.png`
+- The base64-encoded image is always returned in the response
+- Saved files can be accessed directly from the filesystem
+
+**Example Usage:**
+```bash
+# Generate and save a network visualization
+curl -X POST http://localhost:8000/visualize \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": {
+      "nodes": [
+        {"id": "Paul", "connections": 5, "role": "protagonist", "work": "Dune", "community": 1},
+        {"id": "Jessica", "connections": 4, "role": "mentor", "work": "Dune", "community": 1}
+      ],
+      "edges": [
+        {"source": "Paul", "target": "Jessica"}
+      ],
+      "communities": [
+        {"id": 1, "size": 2, "density": 0.5, "characters": ["Paul", "Jessica"]}
+      ]
+    },
+    "visualization_type": "network",
+    "format": "png",
+    "enhanced": true,
+    "save_to_disk": true
+  }'
 ```
 
 ### Get Visualization Types
