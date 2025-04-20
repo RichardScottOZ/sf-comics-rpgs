@@ -25,10 +25,12 @@ Provide detailed analysis while maintaining a professional and insightful tone."
         title: Optional[str] = None,
         author: Optional[str] = None,
         year: Optional[int] = None,
+        model: Optional[str] = None,
     ) -> Dict[str, Any]:
         analysis = await self._get_analysis(
             content=content,
-            system_prompt=self.system_prompt
+            system_prompt=self.system_prompt,
+            model=model
         )
         
         if title:
