@@ -1,10 +1,11 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Any
 from ..agents.sf_agent import ScienceFictionAgent
 from ..agents.comics_agent import ComicsAgent
 from ..agents.rpg_agent import RPGAgent
+from ..agents.comparative_agent import ComparativeAgent
 from ..config.settings import settings
 
 app = FastAPI(
@@ -19,6 +20,7 @@ app = FastAPI(
 sf_agent = ScienceFictionAgent()
 comics_agent = ComicsAgent()
 rpg_agent = RPGAgent()
+comparative_agent = ComparativeAgent()
 
 class AnalysisRequest(BaseModel):
     content: str
@@ -39,6 +41,11 @@ class RecommendationRequest(BaseModel):
 class CharacterAnalysisRequest(BaseModel):
     character_sheet: str
     system: str
+
+class ComparativeAnalysisRequest(BaseModel):
+    works: List[Dict[str, Any]]
+    analysis_type: str
+    model: Optional[str] = None
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -148,6 +155,72 @@ async def analyze_character(request: CharacterAnalysisRequest):
         result = await rpg_agent.analyze_character(
             character_sheet=request.character_sheet,
             system=request.system
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Comparative Analysis Endpoints
+@app.post("/compare/works", tags=["Comparative Analysis"])
+async def compare_works(request: ComparativeAnalysisRequest):
+    """Compare multiple works based on specified analysis type"""
+    try:
+        result = await comparative_agent.compare_works(
+            works=request.works,
+            analysis_type=request.analysis_type,
+            model=request.model
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/compare/world_building", tags=["Comparative Analysis"])
+async def compare_world_building(request: ComparativeAnalysisRequest):
+    """Compare world-building elements across works"""
+    try:
+        result = await comparative_agent.compare_works(
+            works=request.works,
+            analysis_type="world_building",
+            model=request.model
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/compare/themes", tags=["Comparative Analysis"])
+async def compare_themes(request: ComparativeAnalysisRequest):
+    """Compare themes and motifs across works"""
+    try:
+        result = await comparative_agent.compare_works(
+            works=request.works,
+            analysis_type="themes",
+            model=request.model
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/compare/characters", tags=["Comparative Analysis"])
+async def compare_characters(request: ComparativeAnalysisRequest):
+    """Compare character development and relationships across works"""
+    try:
+        result = await comparative_agent.compare_works(
+            works=request.works,
+            analysis_type="characters",
+            model=request.model
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/compare/plot", tags=["Comparative Analysis"])
+async def compare_plot(request: ComparativeAnalysisRequest):
+    """Compare plot structure and narrative techniques across works"""
+    try:
+        result = await comparative_agent.compare_works(
+            works=request.works,
+            analysis_type="plot",
+            model=request.model
         )
         return result
     except Exception as e:
