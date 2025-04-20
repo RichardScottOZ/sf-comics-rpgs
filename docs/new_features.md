@@ -153,6 +153,125 @@ curl -X POST "http://localhost:8000/rpggeek/data" \
      -d '{"title": "Dungeons & Dragons", "author": "Gary Gygax"}'
 ```
 
+### Internet Speculative Fiction Database (ISFDB) Integration
+The ISFDB integration provides access to comprehensive science fiction and fantasy book data. Note: This integration is currently in beta and has some known limitations.
+
+#### Book Data Endpoint
+```bash
+POST /isfdb/data
+```
+
+**Parameters:**
+- `title` (required): Book title
+- `author` (optional): Author name
+- `year` (optional): Publication year
+
+**Returns:**
+- Book details
+- Publication history
+- Cover images
+- Awards
+- ISFDB URL
+
+**Current Limitations:**
+- Search functionality is limited to exact title matches
+- Some fields may be missing for older or less popular works
+- Cover images are not available for all entries
+- Publication history may be incomplete for some works
+
+**Planned Improvements:**
+- Enhanced search functionality with fuzzy matching
+- Support for series information
+- Additional metadata fields
+- Improved error handling
+- Rate limiting implementation
+- Caching optimization
+
+#### Author Data Endpoint
+```bash
+POST /isfdb/author
+```
+
+**Parameters:**
+- `author_name` (required): Author's name
+
+**Returns:**
+- Author information
+- Bibliography
+- Awards
+- Author photo (if available)
+- ISFDB URL
+
+**Current Limitations:**
+- Search is case-sensitive
+- Some author entries may be incomplete
+- Photo availability is limited
+- Bibliography may not include all works
+
+**Planned Improvements:**
+- Case-insensitive search
+- Enhanced author metadata
+- Improved photo handling
+- Complete bibliography support
+- Series information integration
+
+**Example Requests:**
+
+Book data:
+```bash
+curl -X POST "http://localhost:8000/isfdb/data" \
+     -H "Content-Type: application/json" \
+     -d '{"title": "Dune", "author": "Frank Herbert", "year": 1965}'
+```
+
+Author data:
+```bash
+curl -X POST "http://localhost:8000/isfdb/author" \
+     -H "Content-Type: application/json" \
+     -d '{"author_name": "Frank Herbert"}'
+```
+
+**Error Handling:**
+The ISFDB integration returns specific error codes:
+- 404: Work or author not found
+- 500: Server error
+- 503: Service temporarily unavailable
+
+**Response Format:**
+```json
+{
+  "data": {
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "publication_history": [...],
+    "cover_images": [...],
+    "awards": [...],
+    "isfdb_url": "https://www.isfdb.org/cgi-bin/pl.cgi?12345"
+  },
+  "metadata": {
+    "timestamp": "2024-03-14T12:00:00Z",
+    "source": "isfdb",
+    "cache_hit": false
+  }
+}
+```
+
+**Error Response:**
+```json
+{
+  "error": "Work not found",
+  "exists": false,
+  "details": "No matching work found in ISFDB database"
+}
+```
+
+**Notes:**
+- All dates are returned in ISO-8601 format
+- Image URLs are provided when available
+- Some fields may be null if data is not available
+- The API is designed to be resilient to missing data
+- Cache TTL is set to 1 hour to reduce load on ISFDB servers
+
 ## Enhanced Comparative Analysis
 
 The comparative analysis endpoints now support additional features:
