@@ -10,6 +10,8 @@ from ..analysis.temporal_analysis import TemporalAnalysis
 from ..analysis.character_network import CharacterNetwork
 from ..analysis.community_analysis import CommunityAnalysis
 from ..config.settings import settings
+from ..agents.network_agent import NetworkAnalysisAgent
+from ..agents.visualization_agent import VisualizationAgent
 
 app = FastAPI(
     title="SFMCP API",
@@ -27,6 +29,8 @@ comparative_agent = ComparativeAgent()
 temporal_analyzer = TemporalAnalysis()
 character_network = CharacterNetwork()
 community_analyzer = CommunityAnalysis()
+network_agent = NetworkAnalysisAgent()
+visualization_agent = VisualizationAgent()
 
 class AnalysisRequest(BaseModel):
     content: str
@@ -67,6 +71,19 @@ class NetworkAnalysisRequest(BaseModel):
 class CommunityAnalysisRequest(BaseModel):
     works: List[Dict[str, Any]]
     analysis_type: Optional[str] = "patterns"
+
+class Work(BaseModel):
+    title: str
+    author: str
+    year: Optional[int] = None
+    characters: List[Dict[str, Any]]
+    relationships: List[Dict[str, Any]]
+
+class VisualizationRequest(BaseModel):
+    data: Dict[str, Any]
+    visualization_type: str
+    format: Optional[str] = "png"
+    enhanced: Optional[bool] = False
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -285,13 +302,10 @@ async def analyze_temporal(request: TemporalAnalysisRequest):
 
 # Character Network Analysis Endpoints
 @app.post("/analyze/network", tags=["Network Analysis"])
-async def analyze_network(request: NetworkAnalysisRequest):
-    """Analyze character networks and relationships"""
+async def analyze_network(works: List[Work]):
+    """Analyze character networks across works."""
     try:
-        result = character_network.analyze_network(
-            works=request.works,
-            analysis_type=request.analysis_type
-        )
+        result = await network_agent.analyze_network(works)
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -308,6 +322,45 @@ async def analyze_community(request: CommunityAnalysisRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/visualize")
+async def generate_visualization(request: VisualizationRequest):
+    """Generate a visualization from analysis data."""
+    try:
+        result = await visualization_agent.generate_visualization(
+            data=request.data,
+            visualization_type=request.visualization_type,
+            format=request.format,
+            enhanced=request.enhanced
+        )
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/visualization/types")
+async def get_visualization_types():
+    """Get available visualization types."""
+    return {
+        "types": [
+            {
+                "name": "network",
+                "description": "Character network visualization",
+                "supports_enhanced": True
+            },
+            {
+                "name": "temporal",
+                "description": "Temporal analysis visualization",
+                "supports_enhanced": True
+            },
+            {
+                "name": "comparative",
+                "description": "Comparative analysis visualization",
+                "supports_enhanced": True
+            }
+        ]
+    }
 
 if __name__ == "__main__":
     import uvicorn
