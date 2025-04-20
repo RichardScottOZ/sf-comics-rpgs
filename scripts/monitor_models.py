@@ -24,7 +24,7 @@ class ModelMonitor:
     def __init__(self):
         self.console = Console()
         self.stats = {
-            "mistralai/mistral-7b": {"requests": 0, "errors": 0, "avg_time": 0},
+            "mistralai/mistral-small-3.1-24b-instruct:free": {"requests": 0, "errors": 0, "avg_time": 0},
             "google/gemma-7b-it": {"requests": 0, "errors": 0, "avg_time": 0},
             "meta-llama/llama-2-70b": {"requests": 0, "errors": 0, "avg_time": 0},
             "google/palm-2": {"requests": 0, "errors": 0, "avg_time": 0}
