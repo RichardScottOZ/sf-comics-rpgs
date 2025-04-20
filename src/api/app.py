@@ -110,6 +110,10 @@ class ISFDBRequest(BaseModel):
 class ISFDBAuthorRequest(BaseModel):
     author_name: str
 
+class RPGGeekRequest(BaseModel):
+    title: str
+    author: Optional[str] = None
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Redirect to the API documentation"""
@@ -486,6 +490,19 @@ async def get_isfdb_author(request: ISFDBAuthorRequest):
         data_source_agent = DataSourceAgent()
         result = data_source_agent.get_isfdb_author(
             author_name=request.author_name
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/rpggeek/data")
+async def get_rpggeek_data(request: RPGGeekRequest):
+    """Get RPG data from RPGGeek."""
+    try:
+        data_source_agent = DataSourceAgent()
+        result = data_source_agent.get_rpggeek_data(
+            title=request.title,
+            author=request.author
         )
         return result
     except Exception as e:
