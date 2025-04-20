@@ -114,6 +114,11 @@ class RPGGeekRequest(BaseModel):
     title: str
     author: Optional[str] = None
 
+class GCDRequest(BaseModel):
+    title: str
+    publisher: Optional[str] = None
+    year: Optional[int] = None
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Redirect to the API documentation"""
@@ -503,6 +508,20 @@ async def get_rpggeek_data(request: RPGGeekRequest):
         result = data_source_agent.get_rpggeek_data(
             title=request.title,
             author=request.author
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/gcd/data")
+async def get_gcd_data(request: GCDRequest):
+    """Get comic data from the Grand Comics Database."""
+    try:
+        data_source_agent = DataSourceAgent()
+        result = data_source_agent.get_gcd_data(
+            title=request.title,
+            publisher=request.publisher,
+            year=request.year
         )
         return result
     except Exception as e:
