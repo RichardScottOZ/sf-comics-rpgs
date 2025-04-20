@@ -1,5 +1,7 @@
 from typing import Dict, Any, List, Optional
 from .base_agent import BaseAgent
+from ..prompts.prompt_engineer import PromptEngineer
+from ..context.historical_context import HistoricalContext
 import hash
 import logging
 
@@ -8,38 +10,10 @@ logger = logging.getLogger(__name__)
 class ComparativeAgent(BaseAgent):
     def __init__(self):
         super().__init__("comparative")
+        self.prompt_engineer = PromptEngineer()
+        self.historical_context = HistoricalContext()
         self.system_prompt = """You are an expert in comparative analysis of science fiction, comics, and RPG content.
-Your task is to analyze and compare multiple works based on specific aspects:
-
-1. World Building:
-   - Setting consistency and depth
-   - Cultural development
-   - Technological/magical systems
-   - Political structures
-   - Environmental factors
-
-2. Themes and Motifs:
-   - Core themes
-   - Symbolism
-   - Philosophical implications
-   - Social commentary
-   - Moral questions
-
-3. Character Analysis:
-   - Character development
-   - Relationships and dynamics
-   - Archetypes and roles
-   - Motivations and conflicts
-   - Growth and change
-
-4. Plot Structure:
-   - Narrative techniques
-   - Pacing and tension
-   - Conflict resolution
-   - Story arcs
-   - Climax and resolution
-
-Provide detailed, insightful comparisons while maintaining a professional and analytical tone."""
+Your task is to analyze and compare multiple works based on specific aspects, taking into account their historical context and using appropriate analytical frameworks."""
 
     async def compare_works(
         self,
@@ -47,13 +21,27 @@ Provide detailed, insightful comparisons while maintaining a professional and an
         analysis_type: str,
         model: Optional[str] = None,
         force_refresh: bool = False,
+        enhanced: bool = False,
+        include_historical_context: bool = True
     ) -> Dict[str, Any]:
-        """Compare multiple works based on specified analysis type"""
+        """Compare multiple works based on specified analysis type."""
         if not works or len(works) < 2:
             raise ValueError("At least two works are required for comparison")
 
-        # Prepare the comparison prompt
-        comparison_prompt = self._prepare_comparison_prompt(works, analysis_type)
+        # Get historical context for each work
+        historical_contexts = []
+        if include_historical_context:
+            for work in works:
+                context = self.historical_context.get_context_for_work(work)
+                historical_contexts.append(context)
+
+        # Generate the comparison prompt
+        comparison_prompt = self.prompt_engineer.generate_prompt(
+            works=works,
+            analysis_type=analysis_type,
+            enhanced=enhanced,
+            historical_context=historical_contexts[0] if historical_contexts else None
+        )
         
         # Generate cache key
         cache_key = f"{self.agent_type}_{hash(comparison_prompt)}"
@@ -75,40 +63,14 @@ Provide detailed, insightful comparisons while maintaining a professional and an
         # Add metadata
         analysis["comparison_type"] = analysis_type
         analysis["works_compared"] = [work.get("title", "Untitled") for work in works]
+        if historical_contexts:
+            analysis["historical_context"] = historical_contexts
         
         # Cache the result
         self._cache_analysis(cache_key, analysis)
         
         return analysis
 
-    def _prepare_comparison_prompt(
-        self,
-        works: List[Dict[str, Any]],
-        analysis_type: str
-    ) -> str:
-        """Prepare a detailed prompt for the comparison"""
-        works_info = []
-        for work in works:
-            work_info = []
-            if "title" in work:
-                work_info.append(f"Title: {work['title']}")
-            if "author" in work:
-                work_info.append(f"Author: {work['author']}")
-            if "content" in work:
-                work_info.append(f"Content: {work['content']}")
-            works_info.append("\n".join(work_info))
-
-        prompt = f"""Compare the following works based on {analysis_type}:
-
-{chr(10).join(works_info)}
-
-Please provide a detailed analysis focusing on:
-1. Similarities and differences
-2. Strengths and weaknesses of each approach
-3. Impact and effectiveness
-4. Unique contributions to the genre
-5. Recommendations for further study
-
-Format your response in a clear, structured manner."""
-        
-        return prompt 
+    def get_available_analysis_types(self) -> List[str]:
+        """Get list of available analysis types."""
+        return self.prompt_engineer.get_available_analysis_types() 
