@@ -53,8 +53,16 @@ class ModelVerifier:
         """Check if the API is available and responding."""
         try:
             async with self.session.get(f"{self.base_url}/info") as response:
-                return response.status == 200
-        except aiohttp.ClientError:
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"API info endpoint returned status {response.status}: {error_text}")
+                    return False
+                return True
+        except aiohttp.ClientError as e:
+            logger.error(f"Connection error checking API availability: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"Unexpected error checking API availability: {str(e)}")
             return False
 
     async def verify_model(self, model: str) -> bool:
@@ -66,9 +74,16 @@ class ModelVerifier:
                 f"{self.base_url}/analyze/sf",
                 json={"content": test_content, "model": model}
             ) as response:
-                return response.status == 200
+                if response.status != 200:
+                    error_text = await response.text()
+                    logger.error(f"API returned status {response.status}: {error_text}")
+                    return False
+                return True
+        except aiohttp.ClientError as e:
+            logger.error(f"Connection error verifying model {model}: {str(e)}")
+            return False
         except Exception as e:
-            logger.error(f"Error verifying model {model}: {str(e)}")
+            logger.error(f"Unexpected error verifying model {model}: {str(e)}")
             return False
 
     async def run_verification(self):
