@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import aiohttp
 from typing import Dict, Any
+import os
 
 # Create logs directory if it doesn't exist
 logs_dir = Path("logs")
@@ -23,7 +24,8 @@ logger = logging.getLogger(__name__)
 class ModelVerifier:
     def __init__(self):
         self.base_url = "http://localhost:8000"
-        self.expected_model = "mistralai/mistral-7b"
+        # Get model from environment or use default
+        self.expected_model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-7b")
         self.test_cases = [
             {
                 "endpoint": "/analyze/comics",
@@ -103,19 +105,37 @@ class ModelVerifier:
         """Check environment variables and configuration."""
         env_file = Path(".env")
         if not env_file.exists():
-            logger.error("No .env file found")
+            logger.error("No .env file found. Please create one with the following content:")
+            logger.error("OPENROUTER_DEFAULT_MODEL=mistralai/mistral-7b")
+            logger.error("OPENROUTER_FORCE_MODEL=true")
+            logger.error("OPENROUTER_API_KEY=your_api_key_here")
             return False
 
         with open(env_file, "r") as f:
             env_content = f.read()
-            if "OPENROUTER_DEFAULT_MODEL=mistralai/mistral-7b" not in env_content:
-                logger.error("Default model not set correctly in .env")
-                return False
-            if "OPENROUTER_FORCE_MODEL=true" not in env_content:
-                logger.error("Force model not set correctly in .env")
-                return False
+            
+        # Check for required variables
+        required_vars = {
+            "OPENROUTER_DEFAULT_MODEL": "mistralai/mistral-7b",
+            "OPENROUTER_FORCE_MODEL": "true",
+            "OPENROUTER_API_KEY": None  # Any value is acceptable
+        }
+        
+        missing_vars = []
+        for var, default_value in required_vars.items():
+            if var not in env_content:
+                missing_vars.append(var)
+            elif default_value and f"{var}={default_value}" not in env_content:
+                logger.warning(f"Variable {var} is set but not to the recommended value: {default_value}")
+        
+        if missing_vars:
+            logger.error("Missing required environment variables:")
+            for var in missing_vars:
+                logger.error(f"- {var}")
+            logger.error("\nPlease add these variables to your .env file.")
+            return False
 
-        logger.info("Environment configuration verified")
+        logger.info(f"Environment configuration verified. Using model: {self.expected_model}")
         return True
 
 async def main():
