@@ -7,10 +7,6 @@ from typing import Dict, Any
 import os
 import sys
 import time
-from rich.console import Console
-from rich.table import Table
-from rich.panel import Panel
-from rich import print as rprint
 
 # Create logs directory if it doesn't exist
 logs_dir = Path("logs")
@@ -27,13 +23,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Initialize rich console
-console = Console()
-
 class ModelVerifier:
     def __init__(self):
         self.base_url = "http://localhost:8000"
-        self.console = Console()
         self.session = None
         # Get model from environment or use default
         self.expected_model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-7b")
@@ -81,29 +73,29 @@ class ModelVerifier:
 
     async def run_verification(self):
         """Run the complete verification process."""
-        self.console.print("\n[bold]Starting model verification...[/bold]")
+        logger.info("Starting model verification...")
         
         # Check environment
-        self.console.print("\n[bold]Checking environment configuration...[/bold]")
+        logger.info("Checking environment configuration...")
         model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-7b")
-        self.console.print(f"Verifying model: {model}")
+        logger.info(f"Verifying model: {model}")
         
         if await self.verify_model(model):
-            self.console.print("[green]✓ Model is available[/green]")
-            self.console.print(f"[green]✓ Environment configuration verified. Using model: {model}[/green]")
+            logger.info("✓ Model is available")
+            logger.info(f"✓ Environment configuration verified. Using model: {model}")
         else:
-            self.console.print("[red]✗ Model verification failed[/red]")
+            logger.error("✗ Model verification failed")
             return False
 
         # Check API server
-        self.console.print("\n[bold]Checking API server availability...[/bold]")
+        logger.info("Checking API server availability...")
         
         if await self.check_api_availability():
-            self.console.print("[green]✓ API server is responding[/green]")
+            logger.info("✓ API server is responding")
         else:
-            self.console.print("[red]✗ API server is not responding[/red]")
-            self.console.print("[yellow]Please ensure the API server is running with:[/yellow]")
-            self.console.print("[yellow]uvicorn src.api.app:app --host 0.0.0.0 --port 8000[/yellow]")
+            logger.error("✗ API server is not responding")
+            logger.info("Please ensure the API server is running with:")
+            logger.info("uvicorn src.api.app:app --host 0.0.0.0 --port 8000")
             return False
 
         return True
@@ -113,9 +105,9 @@ async def main():
         success = await verifier.run_verification()
         
         if success:
-            console.print("\n[green]✓ All verifications passed successfully![/green]")
+            logger.info("✓ All verifications passed successfully!")
         else:
-            console.print("\n[red]✗ Some endpoints failed verification. Check the logs for details.[/red]")
+            logger.error("✗ Some endpoints failed verification. Check the logs for details.")
             sys.exit(1)
 
 if __name__ == "__main__":
