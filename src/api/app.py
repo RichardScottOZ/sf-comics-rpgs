@@ -47,6 +47,8 @@ class ComparativeAnalysisRequest(BaseModel):
     analysis_type: str
     model: Optional[str] = None
     force_refresh: Optional[bool] = False
+    enhanced: Optional[bool] = False
+    include_historical_context: Optional[bool] = True
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -170,7 +172,9 @@ async def compare_works(request: ComparativeAnalysisRequest):
             works=request.works,
             analysis_type=request.analysis_type,
             model=request.model,
-            force_refresh=request.force_refresh
+            force_refresh=request.force_refresh,
+            enhanced=request.enhanced,
+            include_historical_context=request.include_historical_context
         )
         return result
     except Exception as e:
@@ -184,7 +188,9 @@ async def compare_world_building(request: ComparativeAnalysisRequest):
             works=request.works,
             analysis_type="world_building",
             model=request.model,
-            force_refresh=request.force_refresh
+            force_refresh=request.force_refresh,
+            enhanced=request.enhanced,
+            include_historical_context=request.include_historical_context
         )
         return result
     except Exception as e:
@@ -198,7 +204,9 @@ async def compare_themes(request: ComparativeAnalysisRequest):
             works=request.works,
             analysis_type="themes",
             model=request.model,
-            force_refresh=request.force_refresh
+            force_refresh=request.force_refresh,
+            enhanced=request.enhanced,
+            include_historical_context=request.include_historical_context
         )
         return result
     except Exception as e:
@@ -212,7 +220,9 @@ async def compare_characters(request: ComparativeAnalysisRequest):
             works=request.works,
             analysis_type="characters",
             model=request.model,
-            force_refresh=request.force_refresh
+            force_refresh=request.force_refresh,
+            enhanced=request.enhanced,
+            include_historical_context=request.include_historical_context
         )
         return result
     except Exception as e:
@@ -226,9 +236,19 @@ async def compare_plot(request: ComparativeAnalysisRequest):
             works=request.works,
             analysis_type="plot",
             model=request.model,
-            force_refresh=request.force_refresh
+            force_refresh=request.force_refresh,
+            enhanced=request.enhanced,
+            include_historical_context=request.include_historical_context
         )
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/compare/analysis_types", tags=["Comparative Analysis"])
+async def get_analysis_types():
+    """Get list of available analysis types"""
+    try:
+        return {"analysis_types": comparative_agent.get_available_analysis_types()}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
