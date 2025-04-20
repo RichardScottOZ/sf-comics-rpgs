@@ -11,8 +11,8 @@ class OpenRouterClient:
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/your-repo",  # Required for free tier
-            "X-Title": "SFMCP Testing"  # Required for free tier
+            "HTTP-Referer": "https://github.com/richard/sfmcp",  # Update with your repo
+            "X-Title": "SFMCP Analysis"  # Update with your app name
         }
 
     async def _make_request(
@@ -24,15 +24,20 @@ class OpenRouterClient:
     ) -> Dict[str, Any]:
         url = f"{self.base_url}/{endpoint}"
         async with aiohttp.ClientSession() as session:
-            async with session.request(
-                method=method,
-                url=url,
-                headers=self.headers,
-                json=data,
-                params=params,
-            ) as response:
-                response.raise_for_status()
-                return await response.json()
+            try:
+                async with session.request(
+                    method=method,
+                    url=url,
+                    headers=self.headers,
+                    json=data,
+                    params=params,
+                ) as response:
+                    if response.status != 200:
+                        error_text = await response.text()
+                        raise Exception(f"{response.status}, message='{error_text}', url='{url}'")
+                    return await response.json()
+            except Exception as e:
+                raise Exception(f"Request failed: {str(e)}")
 
     async def chat_completion(
         self,
@@ -44,14 +49,23 @@ class OpenRouterClient:
         if self.force_model:
             model = self.default_model
 
+        # Ensure model is specified
+        if not model:
+            model = self.default_model
+
+        # Add required parameters for the model
+        request_data = {
+            "model": model,
+            "messages": messages,
+            "temperature": 0.7,
+            "max_tokens": 1000,
+            **kwargs
+        }
+
         response = await self._make_request(
             method="POST",
             endpoint="chat/completions",
-            data={
-                "model": model,
-                "messages": messages,
-                **kwargs
-            }
+            data=request_data
         )
         return response
 
