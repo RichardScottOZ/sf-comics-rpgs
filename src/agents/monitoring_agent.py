@@ -303,6 +303,72 @@ class MonitoringAgent(BaseAgent):
                         new_items.extend(self._filter_new_items(results, profile))
                     except Exception as e:
                         logging.error(f"Error checking Wikipedia: {e}")
+
+            elif source == 'rpggeek':
+                # Check RPGGeek for new RPG content
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.get_rpggeek_data(
+                            title=keyword
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking RPGGeek: {e}")
+
+            elif source == 'gcd':
+                # Check Grand Comics Database for new comics
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.get_gcd_data(
+                            title=keyword
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking GCD: {e}")
+
+            elif source == 'openlibrary':
+                # Check OpenLibrary for new books
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.get_openlibrary_data(
+                            title=keyword
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking OpenLibrary: {e}")
+
+            elif source == 'librarything':
+                # Check LibraryThing for new books
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.get_librarything_data(
+                            title=keyword
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking LibraryThing: {e}")
+
+            elif source == 'arxiv':
+                # Check arXiv for scientific papers
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.search_arxiv(
+                            query=keyword
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking arXiv: {e}")
+
+            elif source == 'doaj':
+                # Check Directory of Open Access Journals
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.search_doaj(
+                            query=keyword
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking DOAJ: {e}")
         
         # Update last checked time
         self.interest_profiles[profile_id]['last_checked'] = datetime.now()
