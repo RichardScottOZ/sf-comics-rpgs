@@ -28,7 +28,7 @@ class ModelVerifier:
         self.base_url = "http://localhost:8000"
         self.session = None
         # Get model from environment or use default
-        self.expected_model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-7b")
+        self.expected_model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-small-3.1-24b-instruct:free")
         self.timeout = aiohttp.ClientTimeout(total=10)  # 10 second timeout
         self.available_models = [
             "openai/gpt-4",
@@ -37,8 +37,7 @@ class ModelVerifier:
             "anthropic/claude-instant",
             "google/palm-2",
             "meta-llama/llama-2-70b",
-            "mistralai/mistral-7b",
-            "google/gemma-7b-it"
+            "mistralai/mistral-small-3.1-24b-instruct:free"
         ]
 
     async def __aenter__(self):
@@ -96,7 +95,7 @@ class ModelVerifier:
         
         # Check environment
         logger.info("Checking environment configuration...")
-        model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-7b")
+        model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-small-3.1-24b-instruct:free")
         logger.info(f"Verifying model: {model}")
         
         if await self.verify_model(model):
