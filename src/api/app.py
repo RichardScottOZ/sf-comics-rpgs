@@ -6,6 +6,9 @@ from ..agents.sf_agent import ScienceFictionAgent
 from ..agents.comics_agent import ComicsAgent
 from ..agents.rpg_agent import RPGAgent
 from ..agents.comparative_agent import ComparativeAgent
+from ..analysis.temporal_analysis import TemporalAnalysis
+from ..analysis.character_network import CharacterNetwork
+from ..analysis.community_analysis import CommunityAnalysis
 from ..config.settings import settings
 
 app = FastAPI(
@@ -16,11 +19,14 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Initialize agents
+# Initialize agents and analyzers
 sf_agent = ScienceFictionAgent()
 comics_agent = ComicsAgent()
 rpg_agent = RPGAgent()
 comparative_agent = ComparativeAgent()
+temporal_analyzer = TemporalAnalysis()
+character_network = CharacterNetwork()
+community_analyzer = CommunityAnalysis()
 
 class AnalysisRequest(BaseModel):
     content: str
@@ -49,6 +55,18 @@ class ComparativeAnalysisRequest(BaseModel):
     force_refresh: Optional[bool] = False
     enhanced: Optional[bool] = False
     include_historical_context: Optional[bool] = True
+
+class TemporalAnalysisRequest(BaseModel):
+    works: List[Dict[str, Any]]
+    analysis_type: Optional[str] = "evolution"
+
+class NetworkAnalysisRequest(BaseModel):
+    works: List[Dict[str, Any]]
+    analysis_type: Optional[str] = "relationships"
+
+class CommunityAnalysisRequest(BaseModel):
+    works: List[Dict[str, Any]]
+    analysis_type: Optional[str] = "patterns"
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -249,6 +267,45 @@ async def get_analysis_types():
     """Get list of available analysis types"""
     try:
         return {"analysis_types": comparative_agent.get_available_analysis_types()}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Temporal Analysis Endpoints
+@app.post("/analyze/temporal", tags=["Temporal Analysis"])
+async def analyze_temporal(request: TemporalAnalysisRequest):
+    """Analyze works across different time periods"""
+    try:
+        result = temporal_analyzer.analyze_temporal_patterns(
+            works=request.works,
+            analysis_type=request.analysis_type
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Character Network Analysis Endpoints
+@app.post("/analyze/network", tags=["Network Analysis"])
+async def analyze_network(request: NetworkAnalysisRequest):
+    """Analyze character networks and relationships"""
+    try:
+        result = character_network.analyze_network(
+            works=request.works,
+            analysis_type=request.analysis_type
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Community Analysis Endpoints
+@app.post("/analyze/community", tags=["Community Analysis"])
+async def analyze_community(request: CommunityAnalysisRequest):
+    """Analyze works across different communities"""
+    try:
+        result = community_analyzer.analyze_communities(
+            works=request.works,
+            analysis_type=request.analysis_type
+        )
+        return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
