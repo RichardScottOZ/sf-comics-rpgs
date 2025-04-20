@@ -20,7 +20,7 @@ class BaseAgent:
         self,
         content: str,
         system_prompt: str,
-        model: str = "mistralai/mistral-7b",
+        model: Optional[str] = None,
         temperature: float = 0.7,
         max_tokens: Optional[int] = None,
     ) -> Dict[str, Any]:
@@ -30,7 +30,7 @@ class BaseAgent:
             logger.info(f"Using cached result for {self.agent_type} analysis")
             return cached_result
 
-        logger.info(f"Making API request with model: {model}")
+        logger.info(f"Making API request with model: {model or self.client.default_model}")
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": content}
@@ -43,10 +43,10 @@ class BaseAgent:
                 temperature=temperature,
                 max_tokens=max_tokens
             )
-            logger.info(f"Successfully received response from {model}")
+            logger.info(f"Successfully received response from {model or self.client.default_model}")
             logger.debug(f"Response details: {json.dumps(result, indent=2)}")
         except Exception as e:
-            logger.error(f"Error in API request to {model}: {str(e)}")
+            logger.error(f"Error in API request to {model or self.client.default_model}: {str(e)}")
             raise
 
         analysis = {
