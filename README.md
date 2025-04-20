@@ -59,6 +59,17 @@ curl -X POST "http://localhost:8000/analyze/sf" \
            "title": "Optional title",
            "author": "Optional author"
          }'
+
+curl -X POST "http://localhost:8000/analyze/sf" \
+     -H "Content-Type: application/json" \
+     -d '{
+           "content": "An iconic original SF rpg - what bandas has it influenced?",
+           "title": "Traveller",
+           "author": "Marc Miller",
+           "model": "openai/gpt-3.5-turbo"
+         }'
+
+
 ```
 
 ## Development
