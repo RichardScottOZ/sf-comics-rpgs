@@ -11,6 +11,8 @@ class OpenRouterClient:
         self.headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/your-repo",  # Required for free tier
+            "X-Title": "SFMCP Testing"  # Required for free tier
         }
 
     async def _make_request(
@@ -42,16 +44,10 @@ class OpenRouterClient:
         if self.force_model:
             model = self.default_model
 
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "HTTP-Referer": "https://github.com/your-repo",  # Required for free tier
-            "X-Title": "SFMCP Testing"  # Required for free tier
-        }
-
         response = await self._make_request(
-            "https://openrouter.ai/api/v1/chat/completions",
-            headers=headers,
-            json={
+            method="POST",
+            endpoint="chat/completions",
+            data={
                 "model": model,
                 "messages": messages,
                 **kwargs
