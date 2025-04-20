@@ -366,6 +366,293 @@ Get available visualization types and their capabilities.
 }
 ```
 
+## Monitoring Endpoints
+
+### Interest Profile Management
+
+#### Create Interest Profile
+```bash
+POST /monitoring/profile
+```
+Create a new interest profile for monitoring.
+
+**Request Body:**
+```json
+{
+    "name": "Science Fiction Classics",
+    "sources": ["isfdb", "goodreads", "wikipedia"],
+    "keywords": ["science fiction", "cyberpunk"],
+    "authors": ["William Gibson", "Neal Stephenson"],
+    "notification_preferences": {
+        "frequency": "daily",
+        "channels": ["email", "api"]
+    }
+}
+```
+
+**Response:**
+```json
+{
+    "profile_id": 1,
+    "name": "Science Fiction Classics",
+    "sources": ["isfdb", "goodreads", "wikipedia"],
+    "keywords": ["science fiction", "cyberpunk"],
+    "authors": ["William Gibson", "Neal Stephenson"],
+    "notification_preferences": {
+        "frequency": "daily",
+        "channels": ["email", "api"]
+    },
+    "created_at": "2024-03-14T12:00:00Z",
+    "last_checked": "2024-03-14T12:00:00Z"
+}
+```
+
+#### Get Profile Updates
+```bash
+GET /monitoring/profile/{profile_id}
+```
+Get updates for a specific interest profile.
+
+**Response:**
+```json
+{
+    "profile_id": 1,
+    "profile_name": "Science Fiction Classics",
+    "last_checked": "2024-03-14T12:00:00Z",
+    "new_items_count": 5,
+    "new_items": [
+        {
+            "title": "Neuromancer",
+            "author": "William Gibson",
+            "source": "isfdb",
+            "url": "https://www.isfdb.org/cgi-bin/pl.cgi?123456"
+        }
+    ],
+    "notification_preferences": {
+        "frequency": "daily",
+        "channels": ["email", "api"]
+    }
+}
+```
+
+#### List Profiles
+```bash
+GET /monitoring/profiles
+```
+List all interest profiles.
+
+**Response:**
+```json
+{
+    "profiles": [
+        {
+            "profile_id": 1,
+            "name": "Science Fiction Classics",
+            "last_checked": "2024-03-14T12:00:00Z",
+            "sources": ["isfdb", "goodreads", "wikipedia"]
+        }
+    ]
+}
+```
+
+#### Delete Profile
+```bash
+DELETE /monitoring/profile/{profile_id}
+```
+Delete an interest profile.
+
+**Response:**
+```json
+{
+    "status": "success",
+    "message": "Profile 1 deleted"
+}
+```
+
+### Notification Configuration
+
+#### Email Configuration
+```bash
+POST /monitoring/email/config
+```
+Configure email notifications for monitoring alerts.
+
+**Request Body:**
+```json
+{
+    "smtp_server": "smtp.example.com",
+    "smtp_port": 587,
+    "username": "your-email@example.com",
+    "password": "your-password",
+    "from_email": "notifications@example.com"
+}
+```
+
+**Response:**
+```json
+{
+    "status": "success",
+    "message": "Email configuration updated"
+}
+```
+
+#### Webhook Management
+
+**Add Webhook:**
+```bash
+POST /monitoring/webhook/{webhook_id}
+```
+
+**Request Body:**
+```json
+{
+    "url": "https://your-webhook-url.com",
+    "secret": "optional-secret-key",
+    "events": ["new_content", "rating_update"],
+    "headers": {
+        "Authorization": "Bearer your-token"
+    }
+}
+```
+
+**Delete Webhook:**
+```bash
+DELETE /monitoring/webhook/{webhook_id}
+```
+
+**Response:**
+```json
+{
+    "status": "success",
+    "message": "Webhook {webhook_id} deleted"
+}
+```
+
+### Monitoring Statistics
+```bash
+GET /monitoring/statistics
+```
+Get statistics about the monitoring system.
+
+**Response:**
+```json
+{
+    "total_profiles": 10,
+    "active_profiles": 8,
+    "total_notifications": 100,
+    "webhook_count": 2,
+    "last_check_time": "2024-03-14T12:00:00Z",
+    "source_stats": {
+        "isfdb": 40,
+        "goodreads": 35,
+        "wikipedia": 25
+    }
+}
+```
+
+### Cleanup Notifications
+```bash
+POST /monitoring/cleanup
+```
+Clean up old notifications from the system.
+
+**Query Parameters:**
+- `days` (optional): Number of days to keep notifications (default: 30)
+
+**Response:**
+```json
+{
+    "status": "success",
+    "message": "Cleaned up notifications older than 30 days"
+}
+```
+
+### Usage Examples
+
+#### Create Interest Profile
+```bash
+curl -X POST "http://localhost:8000/monitoring/profile" \
+     -H "Content-Type: application/json" \
+     -d '{
+         "name": "Science Fiction Classics",
+         "sources": ["isfdb", "goodreads", "wikipedia"],
+         "keywords": ["science fiction", "cyberpunk"],
+         "authors": ["William Gibson", "Neal Stephenson"],
+         "notification_preferences": {
+             "frequency": "daily",
+             "channels": ["email", "api"]
+         }
+     }'
+```
+
+#### Configure Email Notifications
+```bash
+curl -X POST "http://localhost:8000/monitoring/email/config" \
+     -H "Content-Type: application/json" \
+     -d '{
+         "smtp_server": "smtp.example.com",
+         "smtp_port": 587,
+         "username": "your-email@example.com",
+         "password": "your-password",
+         "from_email": "notifications@example.com"
+     }'
+```
+
+#### Add Webhook
+```bash
+curl -X POST "http://localhost:8000/monitoring/webhook/my-webhook" \
+     -H "Content-Type: application/json" \
+     -d '{
+         "url": "https://your-webhook-url.com",
+         "secret": "optional-secret-key",
+         "events": ["new_content", "rating_update"],
+         "headers": {
+             "Authorization": "Bearer your-token"
+         }
+     }'
+```
+
+#### Get Monitoring Statistics
+```bash
+curl -X GET "http://localhost:8000/monitoring/statistics"
+```
+
+#### Cleanup Notifications
+```bash
+curl -X POST "http://localhost:8000/monitoring/cleanup?days=30"
+```
+
+### Notes
+
+1. **Interest Profiles**:
+   - Profiles can monitor multiple sources
+   - Keywords support fuzzy matching
+   - Authors are matched exactly
+   - Notification preferences can be customized
+
+2. **Email Configuration**:
+   - Supports TLS/SSL
+   - Password is stored securely
+   - Can be updated at any time
+
+3. **Webhooks**:
+   - Support custom headers
+   - Optional secret for security
+   - Can be configured for specific events
+   - Include timestamp in payload
+
+4. **Statistics**:
+   - Track active vs. total profiles
+   - Monitor notification counts
+   - Track source-specific activity
+   - Include last check time
+
+5. **Cleanup**:
+   - Default 30-day retention
+   - Configurable retention period
+   - Maintains active profiles
+   - Preserves recent notifications
+
 ## Usage Examples
 
 ### Curl Examples
