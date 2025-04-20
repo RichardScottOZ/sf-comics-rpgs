@@ -84,6 +84,7 @@ class VisualizationRequest(BaseModel):
     visualization_type: str
     format: Optional[str] = "png"
     enhanced: Optional[bool] = False
+    save_to_disk: Optional[bool] = False
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -331,7 +332,8 @@ async def generate_visualization(request: VisualizationRequest):
             data=request.data,
             visualization_type=request.visualization_type,
             format=request.format,
-            enhanced=request.enhanced
+            enhanced=request.enhanced,
+            save_to_disk=request.save_to_disk
         )
         return result
     except ValueError as e:
