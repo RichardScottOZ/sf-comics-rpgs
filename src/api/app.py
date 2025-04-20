@@ -13,6 +13,7 @@ from ..config.settings import settings
 from ..agents.network_agent import NetworkAnalysisAgent
 from ..agents.visualization_agent import VisualizationAgent
 from ..agents.data_source_agent import DataSourceAgent
+from ..agents.monitoring_agent import MonitoringAgent
 
 app = FastAPI(
     title="SFMCP API",
@@ -32,6 +33,9 @@ character_network = CharacterNetwork()
 community_analyzer = CommunityAnalysis()
 network_agent = NetworkAnalysisAgent()
 visualization_agent = VisualizationAgent()
+
+# Initialize monitoring agent
+monitoring_agent = MonitoringAgent()
 
 class AnalysisRequest(BaseModel):
     content: str
@@ -118,6 +122,13 @@ class GCDRequest(BaseModel):
     title: str
     publisher: Optional[str] = None
     year: Optional[int] = None
+
+class InterestProfile(BaseModel):
+    name: str
+    sources: List[str]
+    keywords: List[str]
+    authors: List[str]
+    notification_preferences: Dict[str, Any]
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -524,6 +535,55 @@ async def get_gcd_data(request: GCDRequest):
             year=request.year
         )
         return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/monitoring/profile")
+async def create_interest_profile(profile: InterestProfile):
+    """Create a new interest profile for monitoring."""
+    try:
+        result = await monitoring_agent.add_interest_profile(profile.dict())
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/monitoring/profile/{profile_id}")
+async def get_profile_updates(profile_id: int):
+    """Get updates for a specific interest profile."""
+    try:
+        result = await monitoring_agent.get_notification_summary(profile_id)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/monitoring/profiles")
+async def list_profiles():
+    """List all interest profiles."""
+    try:
+        return {
+            "profiles": [
+                {
+                    "profile_id": pid,
+                    "name": profile["name"],
+                    "last_checked": profile["last_checked"],
+                    "sources": profile["sources"]
+                }
+                for pid, profile in monitoring_agent.interest_profiles.items()
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/monitoring/profile/{profile_id}")
+async def delete_profile(profile_id: int):
+    """Delete an interest profile."""
+    try:
+        if profile_id not in monitoring_agent.interest_profiles:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        del monitoring_agent.interest_profiles[profile_id]
+        return {"status": "success", "message": f"Profile {profile_id} deleted"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
