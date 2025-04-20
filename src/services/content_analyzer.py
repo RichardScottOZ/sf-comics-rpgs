@@ -25,7 +25,7 @@ class ContentAnalyzer:
         result = await self.client.analyze_content(
             content=content,
             analysis_type=analysis_type,
-            model="mistralai/mistral-7b"
+            model=None
         )
         
         analysis = {
@@ -54,7 +54,7 @@ class ContentAnalyzer:
         result = await self.client.analyze_content(
             content=content,
             analysis_type=analysis_type,
-            model="mistralai/mistral-7b"
+            model=None
         )
         
         analysis = {
@@ -83,7 +83,7 @@ class ContentAnalyzer:
         result = await self.client.analyze_content(
             content=content,
             analysis_type=analysis_type,
-            model="mistralai/mistral-7b"
+            model=None
         )
         
         analysis = {
