@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     # OpenRouter configuration
     OPENROUTER_API_KEY: str = Field(..., env="OPENROUTER_API_KEY")
     OPENROUTER_DEFAULT_MODEL: str = Field(
-        default="mistralai/mistral-7b",
+        default="mistralai/mistral-small-3.1-24b-instruct:free",
         env="OPENROUTER_DEFAULT_MODEL"
     )
     OPENROUTER_FORCE_MODEL: bool = Field(
