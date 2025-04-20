@@ -30,6 +30,7 @@ class AnalysisRequest(BaseModel):
     year: Optional[int] = None
     edition: Optional[str] = None
     creator: Optional[str] = None
+    model: Optional[str] = None
 
 class RecommendationRequest(BaseModel):
     based_on: str
@@ -63,7 +64,8 @@ async def analyze_science_fiction(request: AnalysisRequest):
             content=request.content,
             title=request.title,
             author=request.author,
-            year=request.year
+            year=request.year,
+            model=request.model
         )
         return result
     except Exception as e:
@@ -91,7 +93,8 @@ async def analyze_comics(request: AnalysisRequest):
             title=request.title,
             publisher=request.publisher,
             year=request.year,
-            creator=request.creator
+            creator=request.creator,
+            model=request.model
         )
         return result
     except Exception as e:
@@ -119,7 +122,8 @@ async def analyze_rpg(request: AnalysisRequest):
             system=request.system,
             source=request.source,
             edition=request.edition,
-            publisher=request.publisher
+            publisher=request.publisher,
+            model=request.model
         )
         return result
     except Exception as e:
