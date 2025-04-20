@@ -12,6 +12,7 @@ from ..analysis.community_analysis import CommunityAnalysis
 from ..config.settings import settings
 from ..agents.network_agent import NetworkAnalysisAgent
 from ..agents.visualization_agent import VisualizationAgent
+from ..agents.data_source_agent import DataSourceAgent
 
 app = FastAPI(
     title="SFMCP API",
@@ -85,6 +86,18 @@ class VisualizationRequest(BaseModel):
     format: Optional[str] = "png"
     enhanced: Optional[bool] = False
     save_to_disk: Optional[bool] = False
+
+class WikipediaRequest(BaseModel):
+    title: str
+    enhanced: Optional[bool] = False
+
+class WikipediaSearchRequest(BaseModel):
+    query: str
+    limit: Optional[int] = 5
+
+class WikipediaRelatedRequest(BaseModel):
+    title: str
+    limit: Optional[int] = 5
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -363,6 +376,45 @@ async def get_visualization_types():
             }
         ]
     }
+
+@app.post("/wikipedia/summary")
+async def get_wikipedia_summary(request: WikipediaRequest):
+    """Get Wikipedia summary for a given title."""
+    try:
+        data_source_agent = DataSourceAgent()
+        result = data_source_agent.get_wikipedia_summary(
+            title=request.title,
+            enhanced=request.enhanced
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/wikipedia/search")
+async def search_wikipedia(request: WikipediaSearchRequest):
+    """Search Wikipedia for articles matching a query."""
+    try:
+        data_source_agent = DataSourceAgent()
+        results = data_source_agent.search_wikipedia(
+            query=request.query,
+            limit=request.limit
+        )
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/wikipedia/related")
+async def get_related_articles(request: WikipediaRelatedRequest):
+    """Get articles related to a given Wikipedia article."""
+    try:
+        data_source_agent = DataSourceAgent()
+        results = data_source_agent.get_related_articles(
+            title=request.title,
+            limit=request.limit
+        )
+        return results
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
