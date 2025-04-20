@@ -616,4 +616,119 @@ class DataSourceAgent(BaseAgent):
             return {
                 "error": str(e),
                 "exists": False
+            }
+
+    def get_gcd_data(self, title: str, publisher: Optional[str] = None, year: Optional[int] = None) -> Dict[str, Any]:
+        """Get comic data from the Grand Comics Database.
+        
+        Args:
+            title: Comic title
+            publisher: Optional publisher name
+            year: Optional publication year
+            
+        Returns:
+            Dictionary containing GCD data
+        """
+        cache_key = f"gcd_{title}_{publisher}_{year}"
+        if cache_key in self.cache:
+            cached_data, timestamp = self.cache[cache_key]
+            if (datetime.now() - timestamp).total_seconds() < self.cache_ttl:
+                return cached_data
+                
+        try:
+            # GCD search endpoint
+            search_url = "https://www.comics.org/search/advanced/"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            }
+            
+            # Prepare search parameters
+            params = {
+                "target": "series",
+                "method": "icontains",
+                "logic": "True",
+                "title": title,
+                "publisher": publisher if publisher else "",
+                "year": year if year else ""
+            }
+            
+            # Perform the search
+            response = requests.get(search_url, params=params, headers=headers)
+            response.raise_for_status()
+            
+            # Parse the search results
+            soup = BeautifulSoup(response.text, 'html.parser')
+            result = {
+                "title": title,
+                "publisher": publisher,
+                "year": year,
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            # Find the first search result
+            search_results = soup.find_all('tr', class_='row_even') + soup.find_all('tr', class_='row_odd')
+            if search_results:
+                first_result = search_results[0]
+                cells = first_result.find_all('td')
+                
+                if len(cells) >= 3:
+                    # Extract series details
+                    series_link = cells[0].find('a')
+                    if series_link:
+                        series_url = f"https://www.comics.org{series_link['href']}"
+                        result["gcd_url"] = series_url
+                        
+                        # Get detailed information from the series page
+                        series_response = requests.get(series_url, headers=headers)
+                        series_soup = BeautifulSoup(series_response.text, 'html.parser')
+                        
+                        # Extract series information
+                        series_info = {}
+                        
+                        # Get cover image if available
+                        cover_img = series_soup.find('img', class_='cover')
+                        if cover_img:
+                            series_info["cover_url"] = f"https://www.comics.org{cover_img['src']}"
+                            
+                        # Get publication details
+                        pub_details = series_soup.find('div', class_='series_details')
+                        if pub_details:
+                            for detail in pub_details.find_all('div', class_='field'):
+                                label = detail.find('div', class_='label')
+                                value = detail.find('div', class_='value')
+                                if label and value:
+                                    series_info[label.text.strip().lower().replace(' ', '_')] = value.text.strip()
+                            
+                        # Get issue list
+                        issues = []
+                        issue_table = series_soup.find('table', class_='issue_list')
+                        if issue_table:
+                            for row in issue_table.find_all('tr')[1:]:  # Skip header row
+                                cells = row.find_all('td')
+                                if len(cells) >= 4:
+                                    issue_link = cells[0].find('a')
+                                    if issue_link:
+                                        issues.append({
+                                            "number": cells[0].text.strip(),
+                                            "title": cells[1].text.strip(),
+                                            "date": cells[2].text.strip(),
+                                            "price": cells[3].text.strip(),
+                                            "url": f"https://www.comics.org{issue_link['href']}"
+                                        })
+                        series_info["issues"] = issues
+                        
+                        result.update(series_info)
+            
+            self.cache[cache_key] = (result, datetime.now())
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error fetching GCD data: {str(e)}")
+            return {
+                "error": str(e),
+                "exists": False
             } 
