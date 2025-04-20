@@ -428,13 +428,21 @@ class DataSourceAgent(BaseAgent):
         try:
             # ISFDB author search endpoint with correct parameters
             search_url = "https://www.isfdb.org/cgi-bin/search.cgi"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.5',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1'
+            }
             params = {
                 "q": author_name,
                 "type": "Author",
-                "action": "Search"
+                "action": "Search",
+                "format": "html"
             }
             
-            response = requests.get(search_url, params=params)
+            response = requests.get(search_url, params=params, headers=headers)
             response.raise_for_status()
             
             # Parse the search results
@@ -455,7 +463,7 @@ class DataSourceAgent(BaseAgent):
                     result["isfdb_url"] = author_url
                     
                     # Get detailed author information
-                    author_response = requests.get(author_url)
+                    author_response = requests.get(author_url, headers=headers)
                     author_soup = BeautifulSoup(author_response.text, 'html.parser')
                     
                     # Extract author details
