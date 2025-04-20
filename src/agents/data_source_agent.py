@@ -426,11 +426,12 @@ class DataSourceAgent(BaseAgent):
                 return cached_data
                 
         try:
-            # ISFDB author search endpoint
+            # ISFDB author search endpoint with correct parameters
             search_url = "https://www.isfdb.org/cgi-bin/search.cgi"
             params = {
-                "author": author_name,
-                "type": "Author"  # Search by author
+                "q": author_name,
+                "type": "Author",
+                "action": "Search"
             }
             
             response = requests.get(search_url, params=params)
