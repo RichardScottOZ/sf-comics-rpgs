@@ -130,6 +130,19 @@ class InterestProfile(BaseModel):
     authors: List[str]
     notification_preferences: Dict[str, Any]
 
+class EmailConfig(BaseModel):
+    smtp_server: str
+    smtp_port: int
+    username: str
+    password: str
+    from_email: str
+
+class WebhookConfig(BaseModel):
+    url: str
+    secret: Optional[str] = None
+    events: List[str]
+    headers: Optional[Dict[str, str]] = None
+
 @app.get("/", include_in_schema=False)
 async def root():
     """Redirect to the API documentation"""
@@ -584,6 +597,52 @@ async def delete_profile(profile_id: int):
             raise HTTPException(status_code=404, detail="Profile not found")
         del monitoring_agent.interest_profiles[profile_id]
         return {"status": "success", "message": f"Profile {profile_id} deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/monitoring/email/config")
+async def configure_email(config: EmailConfig):
+    """Configure email notifications."""
+    try:
+        await monitoring_agent.configure_email(config.dict())
+        return {"status": "success", "message": "Email configuration updated"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/monitoring/webhook/{webhook_id}")
+async def add_webhook(webhook_id: str, config: WebhookConfig):
+    """Add a new webhook configuration."""
+    try:
+        await monitoring_agent.add_webhook(webhook_id, config.dict())
+        return {"status": "success", "message": f"Webhook {webhook_id} added"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/monitoring/webhook/{webhook_id}")
+async def delete_webhook(webhook_id: str):
+    """Delete a webhook configuration."""
+    try:
+        if webhook_id in monitoring_agent.webhooks:
+            del monitoring_agent.webhooks[webhook_id]
+            return {"status": "success", "message": f"Webhook {webhook_id} deleted"}
+        raise HTTPException(status_code=404, detail="Webhook not found")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/monitoring/statistics")
+async def get_monitoring_statistics():
+    """Get monitoring statistics."""
+    try:
+        return await monitoring_agent.get_statistics()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/monitoring/cleanup")
+async def cleanup_notifications(days: Optional[int] = 30):
+    """Clean up old notifications."""
+    try:
+        await monitoring_agent.cleanup_old_notifications(days)
+        return {"status": "success", "message": f"Cleaned up notifications older than {days} days"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
