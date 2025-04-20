@@ -72,7 +72,11 @@ class ModelVerifier:
             test_content = "Test content for model verification"
             async with self.session.post(
                 f"{self.base_url}/analyze/sf",
-                json={"content": test_content, "model": model}
+                json={
+                    "content": test_content,
+                    "title": "Test Title",
+                    "author": "Test Author"
+                }
             ) as response:
                 if response.status != 200:
                     error_text = await response.text()
