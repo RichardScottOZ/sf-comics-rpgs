@@ -10,7 +10,7 @@ class DataSourceAgent(BaseAgent):
     """Agent for handling external data source integrations."""
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config)
+        super().__init__(agent_type="data_source")
         self.wiki = wikipediaapi.Wikipedia(
             language='en',
             extract_format=wikipediaapi.ExtractFormat.WIKI
