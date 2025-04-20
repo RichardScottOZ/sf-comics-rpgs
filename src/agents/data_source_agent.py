@@ -13,7 +13,8 @@ class DataSourceAgent(BaseAgent):
         super().__init__(agent_type="data_source")
         self.wiki = wikipediaapi.Wikipedia(
             language='en',
-            extract_format=wikipediaapi.ExtractFormat.WIKI
+            extract_format=wikipediaapi.ExtractFormat.WIKI,
+            user_agent='SFMCP/1.0 (https://github.com/yourusername/sfmcp; your-email@example.com)'
         )
         self.cache = {}
         self.cache_ttl = 3600  # 1 hour cache TTL
