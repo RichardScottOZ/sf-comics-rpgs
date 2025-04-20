@@ -369,6 +369,53 @@ class MonitoringAgent(BaseAgent):
                         new_items.extend(self._filter_new_items(results, profile))
                     except Exception as e:
                         logging.error(f"Error checking DOAJ: {e}")
+
+            elif source == 'imdb':
+                # Check IMDb for new movies/TV shows
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.search_imdb(
+                            query=keyword,
+                            type="movie,tvSeries"
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking IMDb: {e}")
+
+            elif source == 'tmdb':
+                # Check The Movie Database
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.search_tmdb(
+                            query=keyword,
+                            media_type="movie,tv"
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking TMDB: {e}")
+
+            elif source == 'tvdb':
+                # Check The TV Database
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.search_tvdb(
+                            query=keyword
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking TVDB: {e}")
+
+            elif source == 'trakt':
+                # Check Trakt for trending sci-fi content
+                for keyword in profile['keywords']:
+                    try:
+                        results = await self.data_source_agent.search_trakt(
+                            query=keyword,
+                            type="movie,show"
+                        )
+                        new_items.extend(self._filter_new_items(results, profile))
+                    except Exception as e:
+                        logging.error(f"Error checking Trakt: {e}")
         
         # Update last checked time
         self.interest_profiles[profile_id]['last_checked'] = datetime.now()

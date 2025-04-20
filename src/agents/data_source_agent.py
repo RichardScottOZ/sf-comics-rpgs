@@ -5,6 +5,7 @@ import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 from .base_agent import BaseAgent
+import aiohttp
 
 logger = logging.getLogger(__name__)
 
@@ -731,4 +732,181 @@ class DataSourceAgent(BaseAgent):
             return {
                 "error": str(e),
                 "exists": False
-            } 
+            }
+
+    async def search_doaj(self, query: str) -> Dict[str, Any]:
+        """Search Directory of Open Access Journals.
+        
+        Args:
+            query: Search query
+            
+        Returns:
+            Dictionary containing search results
+        """
+        cache_key = f"doaj_{query}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+            
+        try:
+            url = "https://doaj.org/api/v1/search/articles"
+            params = {
+                "q": query,
+                "pageSize": 10
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        self.cache[cache_key] = data
+                        return data
+                    else:
+                        return {"error": f"Error searching DOAJ: {response.status}"}
+        except Exception as e:
+            logging.error(f"Error searching DOAJ: {e}")
+            return {"error": str(e)}
+
+    async def search_imdb(self, query: str, type: str = "movie,tvSeries") -> Dict[str, Any]:
+        """Search IMDb for movies and TV shows.
+        
+        Args:
+            query: Search query
+            type: Type of content to search for (default: "movie,tvSeries")
+            
+        Returns:
+            Dictionary containing search results
+        """
+        cache_key = f"imdb_{query}_{type}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+            
+        try:
+            url = "https://imdb-api.com/en/API/Search"
+            params = {
+                "apiKey": self.config.get("imdb_api_key", ""),
+                "expression": query,
+                "type": type
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        self.cache[cache_key] = data
+                        return data
+                    else:
+                        return {"error": f"Error searching IMDb: {response.status}"}
+        except Exception as e:
+            logging.error(f"Error searching IMDb: {e}")
+            return {"error": str(e)}
+
+    async def search_tmdb(self, query: str, media_type: str = "movie,tv") -> Dict[str, Any]:
+        """Search The Movie Database.
+        
+        Args:
+            query: Search query
+            media_type: Type of media to search for (default: "movie,tv")
+            
+        Returns:
+            Dictionary containing search results
+        """
+        cache_key = f"tmdb_{query}_{media_type}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+            
+        try:
+            url = "https://api.themoviedb.org/3/search/multi"
+            params = {
+                "api_key": self.config.get("tmdb_api_key", ""),
+                "query": query,
+                "include_adult": "false"
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        self.cache[cache_key] = data
+                        return data
+                    else:
+                        return {"error": f"Error searching TMDB: {response.status}"}
+        except Exception as e:
+            logging.error(f"Error searching TMDB: {e}")
+            return {"error": str(e)}
+
+    async def search_tvdb(self, query: str) -> Dict[str, Any]:
+        """Search The TV Database.
+        
+        Args:
+            query: Search query
+            
+        Returns:
+            Dictionary containing search results
+        """
+        cache_key = f"tvdb_{query}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+            
+        try:
+            # First get authentication token
+            auth_url = "https://api4.thetvdb.com/v4/login"
+            auth_data = {
+                "apikey": self.config.get("tvdb_api_key", ""),
+                "pin": self.config.get("tvdb_pin", "")
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.post(auth_url, json=auth_data) as auth_response:
+                    if auth_response.status == 200:
+                        auth_data = await auth_response.json()
+                        token = auth_data.get("data", {}).get("token")
+                        
+                        # Now search with token
+                        search_url = "https://api4.thetvdb.com/v4/search"
+                        headers = {"Authorization": f"Bearer {token}"}
+                        params = {"query": query}
+                        async with session.get(search_url, headers=headers, params=params) as response:
+                            if response.status == 200:
+                                data = await response.json()
+                                self.cache[cache_key] = data
+                                return data
+                            else:
+                                return {"error": f"Error searching TVDB: {response.status}"}
+                    else:
+                        return {"error": f"Error authenticating with TVDB: {auth_response.status}"}
+        except Exception as e:
+            logging.error(f"Error searching TVDB: {e}")
+            return {"error": str(e)}
+
+    async def search_trakt(self, query: str, type: str = "movie,show") -> Dict[str, Any]:
+        """Search Trakt for movies and TV shows.
+        
+        Args:
+            query: Search query
+            type: Type of content to search for (default: "movie,show")
+            
+        Returns:
+            Dictionary containing search results
+        """
+        cache_key = f"trakt_{query}_{type}"
+        if cache_key in self.cache:
+            return self.cache[cache_key]
+            
+        try:
+            url = "https://api.trakt.tv/search"
+            headers = {
+                "Content-Type": "application/json",
+                "trakt-api-version": "2",
+                "trakt-api-key": self.config.get("trakt_api_key", "")
+            }
+            params = {
+                "query": query,
+                "type": type
+            }
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers, params=params) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                        self.cache[cache_key] = data
+                        return data
+                    else:
+                        return {"error": f"Error searching Trakt: {response.status}"}
+        except Exception as e:
+            logging.error(f"Error searching Trakt: {e}")
+            return {"error": str(e)} 
