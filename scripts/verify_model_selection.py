@@ -27,6 +27,7 @@ class ModelVerifier:
         self.base_url = "http://localhost:8000"
         # Get model from environment or use default
         self.expected_model = os.getenv("OPENROUTER_DEFAULT_MODEL", "mistralai/mistral-7b")
+        self.timeout = aiohttp.ClientTimeout(total=10)  # 10 second timeout
         self.test_cases = [
             {
                 "endpoint": "/analyze/comics",
@@ -54,10 +55,29 @@ class ModelVerifier:
             }
         ]
 
+    async def check_server_availability(self) -> bool:
+        """Check if the API server is available."""
+        try:
+            async with aiohttp.ClientSession(timeout=self.timeout) as session:
+                async with session.get(f"{self.base_url}/info") as response:
+                    if response.status == 200:
+                        logger.info("API server is available")
+                        return True
+                    else:
+                        logger.error(f"API server returned status {response.status}")
+                        return False
+        except aiohttp.ClientError as e:
+            logger.error(f"Could not connect to API server: {str(e)}")
+            logger.error("Please make sure the API server is running on http://localhost:8000")
+            return False
+        except asyncio.TimeoutError:
+            logger.error("Connection to API server timed out")
+            return False
+
     async def verify_endpoint(self, endpoint: str, data: Dict[str, Any]) -> bool:
         """Verify that an endpoint uses the correct model."""
         try:
-            async with aiohttp.ClientSession() as session:
+            async with aiohttp.ClientSession(timeout=self.timeout) as session:
                 async with session.post(
                     f"{self.base_url}{endpoint}",
                     json=data,
@@ -83,12 +103,22 @@ class ModelVerifier:
                     logger.info(f"Successfully verified {endpoint} using {used_model}")
                     return True
 
+        except aiohttp.ClientError as e:
+            logger.error(f"Connection error in {endpoint}: {str(e)}")
+            return False
+        except asyncio.TimeoutError:
+            logger.error(f"Request to {endpoint} timed out")
+            return False
         except Exception as e:
             logger.error(f"Exception in {endpoint}: {str(e)}")
             return False
 
     async def verify_all_endpoints(self):
         """Verify all endpoints use the correct model."""
+        # First check if server is available
+        if not await self.check_server_availability():
+            return False
+
         results = []
         for test_case in self.test_cases:
             success = await self.verify_endpoint(test_case["endpoint"], test_case["data"])
