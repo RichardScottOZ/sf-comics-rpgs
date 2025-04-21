@@ -54,9 +54,14 @@ class ParallelMonitor:
             self.metrics["success"][version_str] += 1
             self.metrics["performance"][version_str].append(execution_time)
             self.metrics["performance_stats"][version_str].append(execution_time)
-            self.metrics["resource_usage"][version_str].append(self._get_resource_usage())
+            self.metrics["resource_usage"][version_str].append(self._get_resource_usage(execution_time))
         else:
-            self.metrics["errors"][version_str].append(str(error))
+            error_info = {
+                'message': str(error),
+                'execution_time': execution_time,
+                'timestamp': datetime.now().isoformat()
+            }
+            self.metrics["errors"][version_str].append(error_info)
         
         # Update success rate
         total_calls = self.metrics["calls"][version_str]
@@ -67,7 +72,7 @@ class ParallelMonitor:
         """Track parallel execution"""
         self.metrics["calls"]["parallel"] += 1
     
-    def _get_resource_usage(self) -> Dict[str, Any]:
+    def _get_resource_usage(self, execution_time: float) -> Dict[str, Any]:
         """Get current resource usage"""
         process = psutil.Process()
         return {
@@ -77,7 +82,8 @@ class ParallelMonitor:
                 'memory_rss': process.memory_info().rss / 1024 / 1024,  # MB
                 'threads': process.num_threads()
             },
-            'timestamp': datetime.now().isoformat()
+            'timestamp': datetime.now().isoformat(),
+            'execution_time': execution_time
         }
     
     def get_metrics(self) -> Dict[str, Any]:
@@ -159,6 +165,7 @@ class ParallelMonitor:
                 "mcp": []
             }
         }
+        return self.start_time
     
     def get_summary(self) -> str:
         """Get human-readable summary of metrics"""
