@@ -10,80 +10,49 @@ class ParallelMonitor:
     def __init__(self):
         self.start_time = datetime.now()
         self.metrics = {
-            "original_calls": 0,
-            "mcp_calls": 0,
-            "original_success": 0,
-            "mcp_success": 0,
-            "original_performance": 0.0,
-            "mcp_performance": 0.0,
-            "original_errors": [],
-            "mcp_errors": []
+            "calls": {
+                "original": 0,
+                "mcp": 0,
+                "parallel": 0
+            },
+            "success_rate": {
+                "original": 0.0,
+                "mcp": 0.0
+            },
+            "performance_stats": {
+                "original": [],
+                "mcp": []
+            },
+            "resource_usage": {
+                "original": [],
+                "mcp": []
+            },
+            "errors": {
+                "original": [],
+                "mcp": []
+            }
         }
     
     def track_call(self, version: AgentVersion, success: bool, execution_time: float, error: Exception = None):
         """Track a method call"""
-        if version == AgentVersion.ORIGINAL:
-            self.metrics["original_calls"] += 1
-            if success:
-                self.metrics["original_success"] += 1
-                self.metrics["original_performance"] = (
-                    (self.metrics["original_performance"] * (self.metrics["original_success"] - 1) + execution_time) /
-                    self.metrics["original_success"]
-                )
-            else:
-                self.metrics["original_errors"].append(str(error))
+        version_str = str(version).lower()
+        self.metrics["calls"][version_str] += 1
+        
+        if success:
+            self.metrics["performance_stats"][version_str].append(execution_time)
+            self.metrics["resource_usage"][version_str].append(self._get_resource_usage())
         else:
-            self.metrics["mcp_calls"] += 1
-            if success:
-                self.metrics["mcp_success"] += 1
-                self.metrics["mcp_performance"] = (
-                    (self.metrics["mcp_performance"] * (self.metrics["mcp_success"] - 1) + execution_time) /
-                    self.metrics["mcp_success"]
-                )
-            else:
-                self.metrics["mcp_errors"].append(str(error))
+            self.metrics["errors"][version_str].append(str(error))
+        
+        # Update success rate
+        total_calls = self.metrics["calls"][version_str]
+        success_calls = len(self.metrics["performance_stats"][version_str])
+        self.metrics["success_rate"][version_str] = success_calls / total_calls if total_calls > 0 else 0.0
     
-    def get_metrics(self) -> Dict[str, Any]:
-        """Get current metrics"""
-        metrics = self.metrics.copy()
-        metrics["original_reliability"] = (
-            self.metrics["original_success"] / self.metrics["original_calls"]
-            if self.metrics["original_calls"] > 0 else 0.0
-        )
-        metrics["mcp_reliability"] = (
-            self.metrics["mcp_success"] / self.metrics["mcp_calls"]
-            if self.metrics["mcp_calls"] > 0 else 0.0
-        )
-        return metrics
+    def track_parallel_call(self):
+        """Track parallel execution"""
+        self.metrics["calls"]["parallel"] += 1
     
-    def reset_metrics(self):
-        """Reset all metrics"""
-        self.metrics = {
-            "original_calls": 0,
-            "mcp_calls": 0,
-            "original_success": 0,
-            "mcp_success": 0,
-            "original_performance": 0.0,
-            "mcp_performance": 0.0,
-            "original_errors": [],
-            "mcp_errors": []
-        }
-    
-    def get_summary(self) -> str:
-        """Get human-readable summary of metrics"""
-        metrics = self.get_metrics()
-        return (
-            f"Monitoring started at: {self.start_time}\n"
-            f"Original calls: {metrics['original_calls']}\n"
-            f"Mcp calls: {metrics['mcp_calls']}\n"
-            f"Original success rate: {metrics['original_reliability']:.2%}\n"
-            f"Mcp success rate: {metrics['mcp_reliability']:.2%}\n"
-            f"Original performance: {metrics['original_performance']:.3f}s\n"
-            f"Mcp performance: {metrics['mcp_performance']:.3f}s\n"
-            f"Original errors: {len(metrics['original_errors'])}\n"
-            f"Mcp errors: {len(metrics['mcp_errors'])}"
-        )
-
     def _get_resource_usage(self) -> Dict[str, float]:
         """Get current resource usage"""
         process = psutil.Process()
@@ -93,79 +62,100 @@ class ParallelMonitor:
             'memory_rss': process.memory_info().rss / 1024 / 1024,  # MB
             'threads': process.num_threads()
         }
-        
-    def track_parallel_call(self):
-        """Track parallel execution"""
-        self.metrics['calls']['parallel'] += 1
-        
-    def get_metrics_with_statistics(self) -> Dict[str, Any]:
-        """Get current metrics with statistics"""
-        metrics = self.get_metrics()
+    
+    def get_metrics(self) -> Dict[str, Any]:
+        """Get current metrics"""
+        metrics = self.metrics.copy()
         
         # Calculate performance statistics
-        metrics['performance_stats'] = {}
-        for version in ['original', 'mcp']:
-            times = getattr(self, f"{version}_performance")
+        metrics["performance_stats"] = {}
+        for version in ["original", "mcp"]:
+            times = self.metrics["performance_stats"][version]
             if times:
-                metrics['performance_stats'][version] = {
-                    'min': min(times),
-                    'max': max(times),
-                    'avg': sum(times) / len(times),
-                    'count': len(times),
-                    'p95': sorted(times)[int(len(times) * 0.95)] if len(times) > 1 else times[0]
+                metrics["performance_stats"][version] = {
+                    "min": min(times),
+                    "max": max(times),
+                    "avg": sum(times) / len(times),
+                    "count": len(times),
+                    "p95": sorted(times)[int(len(times) * 0.95)] if len(times) > 1 else times[0]
                 }
             else:
-                metrics['performance_stats'][version] = {}
-                
-        # Calculate resource usage statistics
-        metrics['resource_stats'] = {}
-        for version in ['original', 'mcp']:
-            usages = getattr(self, f"{version}_errors")
+                metrics["performance_stats"][version] = {}
+        
+        # Calculate resource statistics
+        metrics["resource_stats"] = {}
+        for version in ["original", "mcp"]:
+            usages = self.metrics["resource_usage"][version]
             if usages:
-                metrics['resource_stats'][version] = {
-                    'cpu': {
-                        'avg': sum(u['usage']['cpu_percent'] for u in usages) / len(usages),
-                        'max': max(u['usage']['cpu_percent'] for u in usages)
+                metrics["resource_stats"][version] = {
+                    "cpu": {
+                        "avg": sum(u["cpu_percent"] for u in usages) / len(usages),
+                        "max": max(u["cpu_percent"] for u in usages)
                     },
-                    'memory': {
-                        'avg': sum(u['usage']['memory_percent'] for u in usages) / len(usages),
-                        'max': max(u['usage']['memory_percent'] for u in usages),
-                        'rss_avg': sum(u['usage']['memory_rss'] for u in usages) / len(usages),
-                        'rss_max': max(u['usage']['memory_rss'] for u in usages)
+                    "memory": {
+                        "avg": sum(u["memory_percent"] for u in usages) / len(usages),
+                        "max": max(u["memory_percent"] for u in usages),
+                        "rss_avg": sum(u["memory_rss"] for u in usages) / len(usages),
+                        "rss_max": max(u["memory_rss"] for u in usages)
                     },
-                    'threads': {
-                        'avg': sum(u['usage']['threads'] for u in usages) / len(usages),
-                        'max': max(u['usage']['threads'] for u in usages)
+                    "threads": {
+                        "avg": sum(u["threads"] for u in usages) / len(usages),
+                        "max": max(u["threads"] for u in usages)
                     }
                 }
             else:
-                metrics['resource_stats'][version] = {}
-                
+                metrics["resource_stats"][version] = {}
+        
         return metrics
     
-    def get_summary_with_statistics(self) -> str:
-        """Get human-readable summary of metrics with statistics"""
-        metrics = self.get_metrics_with_statistics()
+    def reset_metrics(self):
+        """Reset all metrics"""
+        self.metrics = {
+            "calls": {
+                "original": 0,
+                "mcp": 0,
+                "parallel": 0
+            },
+            "success_rate": {
+                "original": 0.0,
+                "mcp": 0.0
+            },
+            "performance_stats": {
+                "original": [],
+                "mcp": []
+            },
+            "resource_usage": {
+                "original": [],
+                "mcp": []
+            },
+            "errors": {
+                "original": [],
+                "mcp": []
+            }
+        }
+    
+    def get_summary(self) -> str:
+        """Get human-readable summary of metrics"""
+        metrics = self.get_metrics()
         summary = []
         
         summary.append(f"Monitoring started at: {self.start_time}")
         
         summary.append("\nCall Statistics:")
-        for version in ['original', 'mcp', 'parallel']:
-            summary.append(f"{version.title()} calls: {getattr(self, f'{version}_calls')}")
-            
+        for version in ["original", "mcp", "parallel"]:
+            summary.append(f"{version.title()} calls: {metrics['calls'][version]}")
+        
         summary.append("\nSuccess Rates:")
-        for version in ['original', 'mcp']:
-            rate = getattr(self, f"{version}_reliability")
-            summary.append(f"{version.title()} success rate: {rate:.2%}")
-            
+        for version in ["original", "mcp"]:
+            summary.append(f"{version.title()} success rate: {metrics['success_rate'][version]:.2%}")
+        
         summary.append("\nError Counts:")
-        for version in ['original', 'mcp']:
-            summary.append(f"{version.title()} errors: {len(getattr(self, f'{version}_errors'))}")
-            
+        for version in ["original", "mcp"]:
+            summary.append(f"{version.title()} errors: {len(metrics['errors'][version])}")
+        
         summary.append("\nPerformance Statistics:")
-        for version in ['original', 'mcp']:
-            stats = metrics['performance_stats'][version]
+        for version in ["original", "mcp"]:
+            stats = metrics["performance_stats"][version]
             if stats:
                 summary.extend([
                     f"{version.title()} Performance:",
@@ -175,10 +165,10 @@ class ParallelMonitor:
                     f"  P95 time: {stats['p95']:.2f}s",
                     f"  Samples: {stats['count']}"
                 ])
-                
+        
         summary.append("\nResource Usage Statistics:")
-        for version in ['original', 'mcp']:
-            stats = metrics['resource_stats'][version]
+        for version in ["original", "mcp"]:
+            stats = metrics["resource_stats"][version]
             if stats:
                 summary.extend([
                     f"{version.title()} Resource Usage:",
@@ -194,5 +184,5 @@ class ParallelMonitor:
                     f"    Avg: {stats['threads']['avg']:.1f}",
                     f"    Max: {stats['threads']['max']}"
                 ])
-                
+        
         return "\n".join(summary) 
