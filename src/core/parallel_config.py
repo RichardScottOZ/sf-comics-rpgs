@@ -27,7 +27,7 @@ class ParallelConfig:
         """Get configuration for specific agent type"""
         return self.agents.get(agent_type, AgentConfig())
     
-    def is_enabled(self, agent_type: str, version: AgentVersion) -> bool:
+    def is_version_enabled(self, agent_type: str, version: AgentVersion) -> bool:
         """Check if specific version of agent is enabled"""
         config = self.get_agent_config(agent_type)
         if version == AgentVersion.ORIGINAL:

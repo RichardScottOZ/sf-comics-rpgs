@@ -11,8 +11,8 @@ from .mcp_enabled.analysis_agent import MCPEnabledAnalysisAgent
 class ParallelAgentFactory:
     """Factory for creating and managing parallel agent instances"""
     
-    def __init__(self):
-        self.config = ParallelConfig()
+    def __init__(self, config: Optional[ParallelConfig] = None):
+        self.config = config or ParallelConfig()
         self.agents: Dict[str, Dict[AgentVersion, BaseAgent]] = {}
         self.agent_classes: Dict[str, Dict[AgentVersion, Type[BaseAgent]]] = {
             'data_source': {
@@ -34,7 +34,7 @@ class ParallelAgentFactory:
         if version is None:
             version = self.config.get_default_version(agent_type)
             
-        if not self.config.is_enabled(agent_type, version):
+        if not self.config.is_version_enabled(agent_type, version):
             raise ValueError(f"Version {version} not enabled for agent type {agent_type}")
             
         if agent_type not in self.agents:
@@ -51,7 +51,7 @@ class ParallelAgentFactory:
         results = {}
         
         for version in [AgentVersion.ORIGINAL, AgentVersion.MCP]:
-            if self.config.is_enabled(agent_type, version):
+            if self.config.is_version_enabled(agent_type, version):
                 try:
                     agent = self.get_agent(agent_type, version)
                     results[version] = await getattr(agent, method)(*args, **kwargs)
@@ -64,5 +64,5 @@ class ParallelAgentFactory:
         """Get list of available versions for agent type"""
         return [
             version for version in AgentVersion
-            if self.config.is_enabled(agent_type, version)
+            if self.config.is_version_enabled(agent_type, version)
         ] 

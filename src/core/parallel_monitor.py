@@ -57,21 +57,27 @@ class ParallelMonitor:
         metrics = self.metrics.copy()
         
         # Calculate success rates
+        metrics['success_rate'] = {}
         for version in ['original', 'mcp']:
             total_calls = metrics['calls'][version]
             if total_calls > 0:
-                metrics['success_rate'] = metrics['success'][version] / total_calls
+                metrics['success_rate'][version] = metrics['success'][version] / total_calls
+            else:
+                metrics['success_rate'][version] = 0
                 
         # Calculate performance statistics
+        metrics['performance_stats'] = {}
         for version in ['original', 'mcp']:
             times = metrics['performance'][version]
             if times:
-                metrics['performance_stats'] = {
+                metrics['performance_stats'][version] = {
                     'min': min(times),
                     'max': max(times),
                     'avg': sum(times) / len(times),
                     'count': len(times)
                 }
+            else:
+                metrics['performance_stats'][version] = {}
                 
         return metrics
     
@@ -87,7 +93,7 @@ class ParallelMonitor:
             
         summary.append("\nSuccess Rates:")
         for version in ['original', 'mcp']:
-            rate = metrics.get('success_rate', {}).get(version, 0)
+            rate = metrics['success_rate'][version]
             summary.append(f"{version.title()} success rate: {rate:.2%}")
             
         summary.append("\nError Counts:")
@@ -96,7 +102,7 @@ class ParallelMonitor:
             
         summary.append("\nPerformance Statistics:")
         for version in ['original', 'mcp']:
-            stats = metrics.get('performance_stats', {}).get(version, {})
+            stats = metrics['performance_stats'][version]
             if stats:
                 summary.extend([
                     f"{version.title()} Performance:",
