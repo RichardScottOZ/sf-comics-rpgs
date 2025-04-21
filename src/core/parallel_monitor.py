@@ -108,7 +108,7 @@ class ParallelMonitor:
         # Calculate performance statistics
         metrics["performance_stats"] = {}
         for version in ["original", "mcp"]:
-            times = self.metrics["performance"][version]
+            times = self.metrics["performance_stats"][version]
             if times:
                 metrics["performance_stats"][version] = {
                     "min": min(times),
