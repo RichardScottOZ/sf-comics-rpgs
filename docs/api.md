@@ -1001,6 +1001,30 @@ The parallel execution framework allows you to run analyses using different mode
 - `mcp`: Uses the MCP-enhanced agent implementation
 - `parallel`: Runs both versions and compares results (default)
 
+**Default Model:**
+- The default model used for all parallel execution endpoints is `mistralai/mistral-small-3.1-24b-instruct:free`
+- This is a free variant of Mistral Small 3.1 24B Instruct with 24 billion parameters
+- Features include:
+  - 128k token context window
+  - Advanced multimodal capabilities
+  - Support for text-based reasoning, programming, and mathematical tasks
+  - Multilingual support across dozens of languages
+- This can be overridden by specifying a different model in the request
+- Available models can be found in the [OpenRouter Models documentation](openrouter_models.md)
+
+**Common Parameters:**
+- `content` (required): The content to analyze
+- `title` (optional): Title of the work
+- `author` (optional): Author of the work
+- `publisher` (optional): Publisher of the work
+- `creator` (optional): Creator of the work
+- `system` (optional): RPG system name
+- `source` (optional): Source of the content
+- `edition` (optional): Edition information
+- `year` (optional): Publication year
+- `model` (optional): Model to use for analysis (default: "mistralai/mistral-small-3.1-24b-instruct:free")
+- `mode` (optional): Execution mode ("parallel", "original", or "mcp", default: "parallel")
+
 #### Analyze Science Fiction in Parallel
 ```bash
 POST /analyze/parallel/sf
@@ -1058,19 +1082,6 @@ Analyze RPG content using parallel execution.
     "mode": "original"
 }
 ```
-
-**Common Parameters:**
-- `content` (required): The content to analyze
-- `title` (optional): Title of the work
-- `author` (optional): Author of the work
-- `publisher` (optional): Publisher of the work
-- `creator` (optional): Creator of the work
-- `system` (optional): RPG system name
-- `source` (optional): Source of the content
-- `edition` (optional): Edition information
-- `year` (optional): Publication year
-- `model` (optional): Model to use for analysis
-- `mode` (optional): Execution mode ("parallel", "original", or "mcp", default: "parallel")
 
 **Response Format:**
 For parallel mode:
