@@ -23,6 +23,10 @@ class ParallelMonitor:
                 "original": 0.0,
                 "mcp": 0.0
             },
+            "performance": {
+                "original": [],
+                "mcp": []
+            },
             "performance_stats": {
                 "original": [],
                 "mcp": []
@@ -47,30 +51,33 @@ class ParallelMonitor:
         self.metrics["calls"][version_str] += 1
         
         if success:
+            self.metrics["success"][version_str] += 1
+            self.metrics["performance"][version_str].append(execution_time)
             self.metrics["performance_stats"][version_str].append(execution_time)
             self.metrics["resource_usage"][version_str].append(self._get_resource_usage())
-            self.metrics["success"][version_str] += 1
         else:
             self.metrics["errors"][version_str].append(str(error))
         
         # Update success rate
         total_calls = self.metrics["calls"][version_str]
-        success_calls = len(self.metrics["performance_stats"][version_str])
+        success_calls = self.metrics["success"][version_str]
         self.metrics["success_rate"][version_str] = success_calls / total_calls if total_calls > 0 else 0.0
     
     def track_parallel_call(self):
         """Track parallel execution"""
         self.metrics["calls"]["parallel"] += 1
     
-    def _get_resource_usage(self) -> Dict[str, float]:
+    def _get_resource_usage(self) -> Dict[str, Any]:
         """Get current resource usage"""
         process = psutil.Process()
         return {
-            'timestamp': datetime.now().isoformat(),
-            'cpu_percent': process.cpu_percent(),
-            'memory_percent': process.memory_percent(),
-            'memory_rss': process.memory_info().rss / 1024 / 1024,  # MB
-            'threads': process.num_threads()
+            'usage': {
+                'cpu_percent': process.cpu_percent(),
+                'memory_percent': process.memory_percent(),
+                'memory_rss': process.memory_info().rss / 1024 / 1024,  # MB
+                'threads': process.num_threads()
+            },
+            'timestamp': datetime.now().isoformat()
         }
     
     def get_metrics(self) -> Dict[str, Any]:
@@ -99,18 +106,18 @@ class ParallelMonitor:
             if usages:
                 metrics["resource_stats"][version] = {
                     "cpu": {
-                        "avg": sum(u["cpu_percent"] for u in usages) / len(usages),
-                        "max": max(u["cpu_percent"] for u in usages)
+                        "avg": sum(u["usage"]["cpu_percent"] for u in usages) / len(usages),
+                        "max": max(u["usage"]["cpu_percent"] for u in usages)
                     },
                     "memory": {
-                        "avg": sum(u["memory_percent"] for u in usages) / len(usages),
-                        "max": max(u["memory_percent"] for u in usages),
-                        "rss_avg": sum(u["memory_rss"] for u in usages) / len(usages),
-                        "rss_max": max(u["memory_rss"] for u in usages)
+                        "avg": sum(u["usage"]["memory_percent"] for u in usages) / len(usages),
+                        "max": max(u["usage"]["memory_percent"] for u in usages),
+                        "rss_avg": sum(u["usage"]["memory_rss"] for u in usages) / len(usages),
+                        "rss_max": max(u["usage"]["memory_rss"] for u in usages)
                     },
                     "threads": {
-                        "avg": sum(u["threads"] for u in usages) / len(usages),
-                        "max": max(u["threads"] for u in usages)
+                        "avg": sum(u["usage"]["threads"] for u in usages) / len(usages),
+                        "max": max(u["usage"]["threads"] for u in usages)
                     }
                 }
             else:
@@ -135,6 +142,10 @@ class ParallelMonitor:
                 "original": 0.0,
                 "mcp": 0.0
             },
+            "performance": {
+                "original": [],
+                "mcp": []
+            },
             "performance_stats": {
                 "original": [],
                 "mcp": []
@@ -155,6 +166,7 @@ class ParallelMonitor:
         summary = []
         
         summary.append(f"Monitoring started at: {self.start_time}")
+        summary.append(f"Last reset at: {self.start_time}")
         
         summary.append("\nCall Statistics:")
         for version in ["original", "mcp", "parallel"]:
