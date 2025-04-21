@@ -182,9 +182,10 @@ class ParallelAgentFactory:
         
         print(f"  Performance - Original: {original_perf}, MCP: {mcp_perf}")
         
-        # Use MCP if it has better success rate and similar or better performance
-        # Or if it's significantly faster (20% or more) even with slightly lower reliability
-        result = (mcp_success_rate > original_success_rate and mcp_perf <= original_perf * 1.2) or \
+        # Use MCP if:
+        # 1. It has better or equal success rate AND better or equal performance
+        # 2. It has slightly lower success rate (>= 90%) but significantly better performance (>= 20% faster)
+        result = (mcp_success_rate >= original_success_rate and mcp_perf <= original_perf) or \
                 (mcp_perf <= original_perf * 0.8 and mcp_success_rate >= original_success_rate * 0.9)
         print(f"  Decision: Using {'MCP' if result else 'Original'} (based on performance and reliability)")
         return result
