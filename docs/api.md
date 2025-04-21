@@ -1132,6 +1132,7 @@ For single mode (original or mcp):
 ```
 
 **Example Use Cases:**
+
 1. Testing original vs MCP performance:
 ```bash
 curl -X POST "http://localhost:8000/analyze/parallel/sf" \
@@ -1151,4 +1152,194 @@ curl -X POST "http://localhost:8000/analyze/parallel/comics" \
 curl -X POST "http://localhost:8000/analyze/parallel/rpg" \
      -H "Content-Type: application/json" \
      -d '{"content": "The d20 System...", "title": "Player'\''s Handbook", "mode": "original"}'
-``` 
+```
+
+**Advanced Examples:**
+
+1. Comparing RPG System Analysis:
+```bash
+# Compare analysis of D&D 5e vs Pathfinder 2e
+curl -X POST "http://localhost:8000/analyze/parallel/rpg" \
+     -H "Content-Type: application/json" \
+     -d '{
+         "content": "The d20 System is a role-playing game system that uses a twenty-sided die as the primary game mechanic. It forms the basis of Dungeons & Dragons 3rd edition and its derivatives. The system uses a unified mechanic where players roll a d20 and add modifiers to determine success or failure of actions.",
+         "title": "Player'\''s Handbook",
+         "system": "D&D 5e",
+         "source": "Core Rulebook",
+         "edition": "5th Edition",
+         "publisher": "Wizards of the Coast",
+         "year": 2014,
+         "mode": "parallel"
+     }'
+```
+
+2. Analyzing Comics with Different Modes:
+```bash
+# First with original mode
+curl -X POST "http://localhost:8000/analyze/parallel/comics" \
+     -H "Content-Type: application/json" \
+     -d '{
+         "content": "With great power comes great responsibility. These words, spoken by Uncle Ben to Peter Parker, encapsulate the core theme of Spider-Man'\''s journey. The story follows Peter as he learns to balance his personal life with his superhero responsibilities.",
+         "title": "Amazing Fantasy #15",
+         "publisher": "Marvel Comics",
+         "year": 1962,
+         "creator": "Stan Lee, Steve Ditko",
+         "mode": "original"
+     }'
+
+# Then with MCP mode
+curl -X POST "http://localhost:8000/analyze/parallel/comics" \
+     -H "Content-Type: application/json" \
+     -d '{
+         "content": "With great power comes great responsibility. These words, spoken by Uncle Ben to Peter Parker, encapsulate the core theme of Spider-Man'\''s journey. The story follows Peter as he learns to balance his personal life with his superhero responsibilities.",
+         "title": "Amazing Fantasy #15",
+         "publisher": "Marvel Comics",
+         "year": 1962,
+         "creator": "Stan Lee, Steve Ditko",
+         "mode": "mcp"
+     }'
+```
+
+3. Python Examples:
+
+```python
+import aiohttp
+import asyncio
+from typing import Dict, Any
+
+async def analyze_parallel_sf(content: str, title: str, mode: str = "parallel") -> Dict[str, Any]:
+    """Analyze science fiction content using parallel execution."""
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "http://localhost:8000/analyze/parallel/sf",
+            json={
+                "content": content,
+                "title": title,
+                "mode": mode
+            }
+        ) as response:
+            return await response.json()
+
+async def analyze_parallel_comics(content: str, title: str, mode: str = "parallel") -> Dict[str, Any]:
+    """Analyze comics content using parallel execution."""
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "http://localhost:8000/analyze/parallel/comics",
+            json={
+                "content": content,
+                "title": title,
+                "mode": mode
+            }
+        ) as response:
+            return await response.json()
+
+async def analyze_parallel_rpg(content: str, title: str, system: str, mode: str = "parallel") -> Dict[str, Any]:
+    """Analyze RPG content using parallel execution."""
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "http://localhost:8000/analyze/parallel/rpg",
+            json={
+                "content": content,
+                "title": title,
+                "system": system,
+                "mode": mode
+            }
+        ) as response:
+            return await response.json()
+
+# Example usage:
+async def main():
+    # Analyze Dune in parallel mode
+    dune_result = await analyze_parallel_sf(
+        content="The spice must flow...",
+        title="Dune",
+        mode="parallel"
+    )
+    print("Dune Analysis:", dune_result)
+
+    # Analyze Spider-Man with original mode
+    spiderman_result = await analyze_parallel_comics(
+        content="With great power comes great responsibility...",
+        title="Amazing Fantasy #15",
+        mode="original"
+    )
+    print("Spider-Man Analysis:", spiderman_result)
+
+    # Analyze D&D with MCP mode
+    dnd_result = await analyze_parallel_rpg(
+        content="The d20 System is a role-playing game system...",
+        title="Player's Handbook",
+        system="D&D 5e",
+        mode="mcp"
+    )
+    print("D&D Analysis:", dnd_result)
+
+# Run the examples
+asyncio.run(main())
+```
+
+4. Performance Testing Example:
+```python
+import aiohttp
+import asyncio
+import time
+from typing import Dict, Any, List
+
+async def test_performance(content: str, title: str, iterations: int = 5) -> Dict[str, List[float]]:
+    """Test performance of different modes."""
+    results = {
+        "original": [],
+        "mcp": [],
+        "parallel": []
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        for mode in ["original", "mcp", "parallel"]:
+            for _ in range(iterations):
+                start_time = time.time()
+                async with session.post(
+                    "http://localhost:8000/analyze/parallel/sf",
+                    json={
+                        "content": content,
+                        "title": title,
+                        "mode": mode
+                    }
+                ) as response:
+                    await response.json()
+                end_time = time.time()
+                results[mode].append(end_time - start_time)
+    
+    return results
+
+# Example usage:
+async def main():
+    content = "The spice must flow..."
+    title = "Dune"
+    
+    performance_results = await test_performance(content, title)
+    
+    print("Performance Results:")
+    for mode, times in performance_results.items():
+        avg_time = sum(times) / len(times)
+        print(f"{mode} mode: {avg_time:.2f} seconds average")
+        print(f"Times: {times}")
+
+# Run the performance test
+asyncio.run(main())
+```
+
+These examples demonstrate:
+1. Different ways to use the parallel execution framework
+2. How to compare results between modes
+3. How to test performance across modes
+4. Both simple and complex use cases
+5. Error handling and response processing
+
+The Python examples show how to:
+- Create reusable functions for different analysis types
+- Handle different modes of execution
+- Process and compare results
+- Test performance across modes
+- Use async/await for efficient API calls
+
+// ... rest of the documentation remains the same ... 
