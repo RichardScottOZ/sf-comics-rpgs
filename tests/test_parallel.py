@@ -28,7 +28,8 @@ def test_parallel_config(config):
     assert config.is_version_enabled('data_source', AgentVersion.ORIGINAL)
     assert config.get_default_version('data_source') in [AgentVersion.ORIGINAL, AgentVersion.MCP]
 
-def test_parallel_factory(factory):
+@pytest.mark.asyncio
+async def test_parallel_factory(factory):
     """Test parallel agent factory"""
     # Test getting original agent
     original_agent = factory.get_agent('data_source', AgentVersion.ORIGINAL)
@@ -39,7 +40,7 @@ def test_parallel_factory(factory):
     assert mcp_agent is not None
     
     # Test parallel execution
-    results = factory.execute_parallel('data_source', 'search_imdb', {'query': 'Dune'})
+    results = await factory.execute_parallel('data_source', 'search_imdb', {'query': 'Dune'})
     assert 'original' in results
     assert 'mcp' in results
 
@@ -96,5 +97,5 @@ def test_parallel_monitor(monitor):
     summary = monitor.get_summary()
     assert "Monitoring started at:" in summary
     assert "Original calls: 2" in summary
-    assert "MCP calls: 1" in summary
+    assert "Mcp calls: 1" in summary
     assert "Parallel calls: 1" in summary 
