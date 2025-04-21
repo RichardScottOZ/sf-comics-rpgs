@@ -17,8 +17,8 @@ from .parallel_monitor import ParallelMonitor
 class ParallelAgentFactory:
     """Factory for creating and managing parallel agent instances"""
     
-    def __init__(self, config: Optional[ParallelConfig] = None):
-        self.config = config or ParallelConfig()
+    def __init__(self, config: ParallelConfig):
+        self.config = config
         self.agents: Dict[str, Dict[AgentVersion, BaseAgent]] = {}
         self.agent_classes: Dict[str, Dict[AgentVersion, Type[BaseAgent]]] = {
             'data_source': {
@@ -39,7 +39,7 @@ class ParallelAgentFactory:
         self.cache_dir = "cache"
         self._setup_cache()
         self.performance_threshold = 0.1  # 10% performance difference threshold
-        self.reliability_threshold = 0.95  # 95% success rate threshold
+        self.reliability_threshold = 0.95  # 95% reliability threshold
         
     def _setup_cache(self):
         """Setup cache directory and load existing cache"""
@@ -93,92 +93,65 @@ class ParallelAgentFactory:
         """Determine if MCP version should be used based on performance and reliability"""
         metrics = self.monitor.get_metrics()
         
-        # Check if we have enough data
-        if metrics['calls']['mcp'] < 10:
+        if not metrics["original_calls"] or not metrics["mcp_calls"]:
             return True
-            
-        # Check performance
-        mcp_perf = metrics['performance_stats']['mcp']
-        orig_perf = metrics['performance_stats']['original']
         
-        if mcp_perf and orig_perf:
-            mcp_avg = mcp_perf['avg']
-            orig_avg = orig_perf['avg']
-            perf_diff = abs(mcp_avg - orig_avg) / orig_avg
-            
-            if perf_diff > self.performance_threshold:
-                return mcp_avg < orig_avg
-                
-        # Check reliability
-        mcp_success = metrics['success_rate']['mcp']
-        if mcp_success < self.reliability_threshold:
-            return False
-            
-        return True
+        mcp_performance = metrics["mcp_performance"]
+        original_performance = metrics["original_performance"]
+        mcp_reliability = metrics["mcp_reliability"]
+        
+        return (
+            mcp_reliability >= self.reliability_threshold and
+            mcp_performance <= original_performance * (1 + self.performance_threshold)
+        )
         
     def get_agent(self, agent_type: str, version: Optional[AgentVersion] = None) -> BaseAgent:
-        """Get agent instance, optionally specifying version"""
-        if version is None:
-            version = self.config.get_default_version(agent_type)
-            
-        if not self.config.is_version_enabled(agent_type, version):
-            raise ValueError(f"Version {version} not enabled for agent type {agent_type}")
-            
+        """Get an agent instance of the specified type and version"""
         if agent_type not in self.agents:
-            self.agents[agent_type] = {}
-            
+            raise ValueError("Invalid agent type")
+        
+        if version is None:
+            version = AgentVersion.MCP if self._should_use_mcp(agent_type) else AgentVersion.ORIGINAL
+        
         if version not in self.agents[agent_type]:
-            agent_class = self.agent_classes[agent_type][version]
-            self.agents[agent_type][version] = agent_class()
-            
+            raise ValueError("Invalid version")
+        
         return self.agents[agent_type][version]
     
-    async def _execute_version(self, agent_type: str, version: AgentVersion, 
-                             method: str, *args, **kwargs) -> Dict[str, Any]:
-        """Execute a method on a specific version of an agent"""
+    async def _execute_version(self, agent_type: str, version: AgentVersion, method: str, *args, **kwargs) -> Any:
+        """Execute a method on a specific version"""
+        agent = self.get_agent(agent_type, version)
+        method_func = getattr(agent, method)
+        
         start_time = asyncio.get_event_loop().time()
         try:
-            agent = self.get_agent(agent_type, version)
-            result = await getattr(agent, method)(*args, **kwargs)
+            result = await method_func(*args, **kwargs)
             execution_time = asyncio.get_event_loop().time() - start_time
-            
             self.monitor.track_call(version, success=True, execution_time=execution_time)
             return result
         except Exception as e:
             execution_time = asyncio.get_event_loop().time() - start_time
-            self.monitor.track_call(version, success=False, error=e, execution_time=execution_time)
-            return {"error": str(e)}
+            self.monitor.track_call(version, success=False, execution_time=execution_time)
+            raise e
     
-    async def execute_parallel(self, agent_type: str, method: str, 
-                             *args, **kwargs) -> Dict[AgentVersion, Any]:
-        """Execute method on both versions in parallel"""
-        self.monitor.track_parallel_call()
-        
-        # Check cache first
-        cache_key = self._get_cache_key(agent_type, method, *args, **kwargs)
-        cached_result = self._get_cached_result(cache_key)
-        if cached_result:
-            return cached_result
-        
-        # Create tasks for both versions
-        tasks = []
-        for version in [AgentVersion.ORIGINAL, AgentVersion.MCP]:
-            if self.config.is_version_enabled(agent_type, version):
-                task = self._execute_version(agent_type, version, method, *args, **kwargs)
-                tasks.append(task)
-        
-        # Execute tasks in parallel
+    async def execute_parallel(self, agent_type: str, method: str, *args, **kwargs) -> Dict[str, Any]:
+        """Execute a method in parallel on both versions"""
         results = {}
-        if tasks:
-            completed = await asyncio.gather(*tasks, return_exceptions=True)
-            for version, result in zip([v for v in [AgentVersion.ORIGINAL, AgentVersion.MCP] 
-                                     if self.config.is_version_enabled(agent_type, v)], completed):
-                results[version] = result
-                
-        # Cache results
-        self._cache_result(cache_key, results)
+        
+        for version in [AgentVersion.ORIGINAL, AgentVersion.MCP]:
+            try:
+                result = await self._execute_version(agent_type, version, method, *args, **kwargs)
+                results[str(version)] = result
+            except Exception as e:
+                results[str(version)] = {"error": str(e)}
         
         return results
+    
+    async def execute_smart(self, agent_type: str, method: str, *args, **kwargs) -> Dict[str, Any]:
+        """Execute a method using the best performing version"""
+        version = AgentVersion.MCP if self._should_use_mcp(agent_type) else AgentVersion.ORIGINAL
+        result = await self._execute_version(agent_type, version, method, *args, **kwargs)
+        return {str(version): result}
     
     def get_comparison(self, results: Dict[AgentVersion, Any]) -> Dict[str, Any]:
         """Get comparison of results from both versions"""
@@ -194,25 +167,4 @@ class ParallelAgentFactory:
         return [
             version for version in AgentVersion
             if self.config.is_version_enabled(agent_type, version)
-        ]
-        
-    async def execute_smart(self, agent_type: str, method: str, 
-                          *args, **kwargs) -> Dict[str, Any]:
-        """Execute method using smart version selection"""
-        # Check cache first
-        cache_key = self._get_cache_key(agent_type, method, *args, **kwargs)
-        cached_result = self._get_cached_result(cache_key)
-        if cached_result:
-            return cached_result
-            
-        # Determine which version to use
-        use_mcp = self._should_use_mcp(agent_type)
-        version = AgentVersion.MCP if use_mcp else AgentVersion.ORIGINAL
-        
-        # Execute selected version
-        result = await self._execute_version(agent_type, version, method, *args, **kwargs)
-        
-        # Cache result
-        self._cache_result(cache_key, {version: result})
-        
-        return {version: result} 
+        ] 
