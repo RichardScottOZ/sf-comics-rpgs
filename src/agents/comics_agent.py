@@ -66,4 +66,27 @@ Provide detailed analysis while maintaining a professional and insightful tone."
         return await self._get_analysis(
             content=prompt,
             system_prompt="You are an expert in comics and graphic novel recommendations."
-        ) 
+        )
+
+class MCPEnabledComicsAgent(ComicsAgent):
+    """MCP-enabled version of the ComicsAgent with enhanced capabilities"""
+    
+    def __init__(self):
+        super().__init__()
+        self.agent_type = "comics_mcp"
+        self.system_prompt = """You are an expert in comics and graphic novels with enhanced analytical capabilities. 
+Your task is to analyze comic content and provide detailed insights about:
+1. Art style and visual storytelling techniques
+2. Panel layout and composition analysis
+3. Character design and development patterns
+4. Storytelling techniques and narrative structure
+5. Themes, symbolism, and subtext
+6. Cultural and historical context
+7. Writing style and dialogue effectiveness
+8. Color theory and visual impact
+9. Influences and references
+10. Impact on the medium and genre evolution
+11. Technical execution and production quality
+12. Audience reception and critical analysis
+
+Provide comprehensive analysis while maintaining a professional and insightful tone. Include specific examples and references where relevant.""" 
