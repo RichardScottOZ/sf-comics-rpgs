@@ -16,6 +16,7 @@ from ..agents.data_source_agent import DataSourceAgent
 from ..agents.monitoring_agent import MonitoringAgent
 from ..agents.parallel_agent import ParallelAgentFactory, ParallelConfig
 from ..agents.sf_agent import MCPEnabledScienceFictionAgent
+from ..agents.comics_agent import MCPEnabledComicsAgent
 
 app = FastAPI(
     title="SFMCP API",
@@ -687,6 +688,49 @@ async def analyze_science_fiction_parallel(request: ParallelAnalysisRequest):
                 title=request.title,
                 author=request.author,
                 year=request.year,
+                model=request.model
+            )
+            
+        return {
+            "results": results,
+            "comparison": factory.get_comparison(results),
+            "metrics": factory.monitor.get_metrics()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze/parallel/comics", tags=["Parallel Execution"])
+async def analyze_comics_parallel(request: ParallelAnalysisRequest):
+    """Analyze comics content using parallel execution"""
+    try:
+        factory = ParallelAgentFactory(ParallelConfig())
+        # Register the agent classes with their proper names
+        factory.register_agent_class(
+            "comics",
+            ComicsAgent,
+            MCPEnabledComicsAgent
+        )
+        
+        if request.mode == "parallel":
+            results = await factory.execute_parallel(
+                "comics",  # Use the registered name
+                "analyze_content",
+                request.content,
+                title=request.title,
+                publisher=request.publisher,
+                year=request.year,
+                creator=request.creator,
+                model=request.model
+            )
+        else:
+            results = await factory.execute_smart(
+                "comics",  # Use the registered name
+                "analyze_content",
+                request.content,
+                title=request.title,
+                publisher=request.publisher,
+                year=request.year,
+                creator=request.creator,
                 model=request.model
             )
             
