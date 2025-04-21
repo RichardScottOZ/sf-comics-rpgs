@@ -159,7 +159,7 @@ class ParallelAgentFactory:
         metrics = self.monitor.get_metrics()
         
         # If we don't have enough data yet, use MCP
-        if metrics['calls']['original'] < 10 or metrics['calls']['mcp'] < 10:
+        if not metrics['calls']['original'] or not metrics['calls']['mcp']:
             return True
             
         # Calculate success rates
