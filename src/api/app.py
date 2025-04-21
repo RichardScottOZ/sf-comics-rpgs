@@ -14,6 +14,9 @@ from ..agents.network_agent import NetworkAnalysisAgent
 from ..agents.visualization_agent import VisualizationAgent
 from ..agents.data_source_agent import DataSourceAgent
 from ..agents.monitoring_agent import MonitoringAgent
+from ..agents.parallel_agent import ParallelAgentFactory, ParallelConfig
+from ..agents.analysis_agent import AnalysisAgent
+from ..agents.mcp_analysis_agent import MCPEnabledAnalysisAgent
 
 app = FastAPI(
     title="SFMCP API",
@@ -142,6 +145,14 @@ class WebhookConfig(BaseModel):
     secret: Optional[str] = None
     events: List[str]
     headers: Optional[Dict[str, str]] = None
+
+class ParallelAnalysisRequest(BaseModel):
+    content: str
+    title: Optional[str] = None
+    author: Optional[str] = None
+    year: Optional[int] = None
+    model: Optional[str] = None
+    mode: Optional[str] = "parallel"  # 'parallel', 'original', or 'mcp'
 
 @app.get("/", include_in_schema=False)
 async def root():
@@ -643,6 +654,35 @@ async def cleanup_notifications(days: Optional[int] = 30):
     try:
         await monitoring_agent.cleanup_old_notifications(days)
         return {"status": "success", "message": f"Cleaned up notifications older than {days} days"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# Parallel Execution Endpoints
+@app.post("/analyze/parallel/sf", tags=["Parallel Execution"])
+async def analyze_science_fiction_parallel(request: ParallelAnalysisRequest):
+    """Analyze science fiction content using parallel execution"""
+    try:
+        factory = ParallelAgentFactory(ParallelConfig())
+        factory.register_agent_class("analysis", AnalysisAgent, MCPEnabledAnalysisAgent)
+        
+        if request.mode == "parallel":
+            results = await factory.execute_parallel(
+                "analysis",
+                "analyze_content",
+                request.content
+            )
+        else:
+            results = await factory.execute_smart(
+                "analysis",
+                "analyze_content",
+                request.content
+            )
+            
+        return {
+            "results": results,
+            "comparison": factory.get_comparison(results),
+            "metrics": factory.monitor.get_metrics()
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
