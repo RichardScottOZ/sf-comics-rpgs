@@ -186,10 +186,12 @@ class ParallelAgentFactory:
         # 1. It has better success rate AND better or equal performance
         # 2. It has equal success rate AND at least 20% better performance
         # 3. It has slightly lower success rate (>= 90%) AND at least 30% better performance
+        # 4. It has significantly better performance (>90% faster) even with lower success rate
         epsilon = 1e-10  # Small value to handle floating-point precision
         result = (mcp_success_rate > original_success_rate and mcp_perf <= original_perf + epsilon) or \
                 (mcp_success_rate == original_success_rate and mcp_perf <= original_perf * 0.8 + epsilon) or \
-                (mcp_perf <= original_perf * 0.7 + epsilon and mcp_success_rate >= original_success_rate * 0.9)
+                (mcp_perf <= original_perf * 0.7 + epsilon and mcp_success_rate >= original_success_rate * 0.9) or \
+                (mcp_perf <= original_perf * 0.1 + epsilon)  # If MCP is >90% faster, use it regardless of success rate
         print(f"  Decision: Using {'MCP' if result else 'Original'} (based on performance and reliability)")
         return result
 
