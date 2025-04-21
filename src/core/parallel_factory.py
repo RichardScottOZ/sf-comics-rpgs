@@ -157,13 +157,19 @@ class ParallelAgentFactory:
     def _should_use_mcp(self, agent_type: str) -> bool:
         """Determine if MCP version should be used based on performance and reliability"""
         metrics = self.monitor.get_metrics()
+        print(f"\nDebug - _should_use_mcp metrics:")
+        print(f"  Calls - Original: {metrics['calls']['original']}, MCP: {metrics['calls']['mcp']}")
+        print(f"  Performance Stats - Original: {metrics['performance_stats']['original']}, MCP: {metrics['performance_stats']['mcp']}")
+        print(f"  Success Rates - Original: {metrics['success_rate']['original']}, MCP: {metrics['success_rate']['mcp']}")
         
         # If we don't have any calls yet, use MCP
         if not metrics['calls']['original'] or not metrics['calls']['mcp']:
+            print("  Decision: Using MCP (no calls yet)")
             return True
             
         # If we don't have any performance data yet, use MCP
         if not metrics['performance_stats']['original'] or not metrics['performance_stats']['mcp']:
+            print("  Decision: Using MCP (no performance data yet)")
             return True
             
         # Calculate success rates
@@ -174,10 +180,14 @@ class ParallelAgentFactory:
         original_perf = metrics['performance_stats']['original'].get('avg', float('inf'))
         mcp_perf = metrics['performance_stats']['mcp'].get('avg', float('inf'))
         
+        print(f"  Performance - Original: {original_perf}, MCP: {mcp_perf}")
+        
         # Use MCP if it has better success rate and similar or better performance
         # Or if it's significantly faster (20% or more) even with slightly lower reliability
-        return (mcp_success_rate > original_success_rate and mcp_perf <= original_perf * 1.2) or \
-               (mcp_perf <= original_perf * 0.8 and mcp_success_rate >= original_success_rate * 0.9)
+        result = (mcp_success_rate > original_success_rate and mcp_perf <= original_perf * 1.2) or \
+                (mcp_perf <= original_perf * 0.8 and mcp_success_rate >= original_success_rate * 0.9)
+        print(f"  Decision: Using {'MCP' if result else 'Original'} (based on performance and reliability)")
+        return result
 
     def should_use_mcp(self) -> bool:
         """Determine if MCP version should be used based on metrics"""
