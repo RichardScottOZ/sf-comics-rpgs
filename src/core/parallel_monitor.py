@@ -57,7 +57,7 @@ class ParallelMonitor:
             self.metrics["resource_usage"][version_str].append(self._get_resource_usage(execution_time))
         else:
             error_info = {
-                'message': str(error),
+                'error': str(error),
                 'execution_time': execution_time,
                 'timestamp': datetime.now().isoformat()
             }
@@ -165,7 +165,10 @@ class ParallelMonitor:
                 "mcp": []
             }
         }
-        return self.start_time
+        return {
+            'start_time': self.start_time,
+            'metrics': self.metrics
+        }
     
     def get_summary(self) -> str:
         """Get human-readable summary of metrics"""
