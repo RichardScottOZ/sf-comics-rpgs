@@ -24,6 +24,7 @@ Provide detailed analysis while maintaining a professional and insightful tone."
     async def analyze_content(
         self,
         content: str,
+        title: Optional[str] = None,
         system: Optional[str] = None,
         source: Optional[str] = None,
         edition: Optional[str] = None,
@@ -36,6 +37,8 @@ Provide detailed analysis while maintaining a professional and insightful tone."
             model=model
         )
         
+        if title:
+            analysis["title"] = title
         if system:
             analysis["system"] = system
         if source:
