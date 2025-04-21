@@ -4,6 +4,11 @@ from src.core.parallel_config import AgentVersion, ParallelConfig
 from src.core.parallel_factory import ParallelAgentFactory
 from src.core.result_comparator import ResultComparator
 from src.core.parallel_monitor import ParallelMonitor
+from src.core.base_agent import BaseAgent
+
+class MockAgent(BaseAgent):
+    async def test_method(self, *args, **kwargs):
+        return {"args": args, "kwargs": kwargs}
 
 @pytest.fixture
 def config():
