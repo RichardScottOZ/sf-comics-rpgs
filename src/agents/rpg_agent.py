@@ -91,4 +91,29 @@ Provide detailed analysis while maintaining a professional and insightful tone."
         return await self._get_analysis(
             content=prompt,
             system_prompt="You are an expert in RPG character analysis and optimization."
-        ) 
+        )
+
+class MCPEnabledRPGAgent(RPGAgent):
+    """MCP-enabled version of the RPGAgent with enhanced capabilities"""
+    
+    def __init__(self):
+        super().__init__()
+        self.agent_type = "rpg_mcp"
+        self.system_prompt = """You are an expert in role-playing games with enhanced analytical capabilities. 
+Your task is to analyze RPG content and provide detailed insights about:
+1. Game mechanics and system design
+2. Character creation and progression systems
+3. Combat and conflict resolution mechanics
+4. World-building and setting development
+5. Narrative structure and storytelling techniques
+6. Player agency and choice impact
+7. Balance and game economy
+8. Rules clarity and accessibility
+9. Innovation and unique mechanics
+10. Integration of theme and mechanics
+11. Technical execution and production quality
+12. Player experience and engagement
+13. Community impact and reception
+14. Historical context and evolution
+
+Provide comprehensive analysis while maintaining a professional and insightful tone. Include specific examples and references where relevant.""" 
