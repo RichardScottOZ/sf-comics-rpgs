@@ -162,4 +162,18 @@ def test_should_use_mcp(factory):
         factory.monitor.track_call(AgentVersion.MCP, success=False, execution_time=0.4)
     
     # MCP is unreliable, should use original
-    assert factory._should_use_mcp("test") is False 
+    assert factory._should_use_mcp("test") is False
+    
+    # Reset metrics
+    factory.monitor.reset_metrics()
+    
+    # Add some performance data with MCP being much faster
+    for _ in range(15):
+        factory.monitor.track_call(AgentVersion.ORIGINAL, success=True, execution_time=1.0)
+        factory.monitor.track_call(AgentVersion.MCP, success=True, execution_time=0.1)
+    
+    # MCP is much faster, should use MCP even with lower reliability
+    for _ in range(5):
+        factory.monitor.track_call(AgentVersion.MCP, success=False, execution_time=0.1)
+    
+    assert factory._should_use_mcp("test") is True 
