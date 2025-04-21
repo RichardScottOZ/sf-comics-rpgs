@@ -167,8 +167,8 @@ class ParallelAgentFactory:
         mcp_success_rate = metrics['success_rate']['mcp']
         
         # Calculate average performance
-        original_perf = sum(metrics['performance_stats']['original']) / len(metrics['performance_stats']['original'])
-        mcp_perf = sum(metrics['performance_stats']['mcp']) / len(metrics['performance_stats']['mcp'])
+        original_perf = metrics['performance_stats']['original'].get('avg', float('inf'))
+        mcp_perf = metrics['performance_stats']['mcp'].get('avg', float('inf'))
         
         # Use MCP if it has better success rate and similar or better performance
         return mcp_success_rate > original_success_rate and mcp_perf <= original_perf * 1.2
@@ -186,8 +186,8 @@ class ParallelAgentFactory:
         mcp_success_rate = metrics['success_rate']['mcp']
         
         # Calculate average performance
-        original_perf = sum(metrics['performance_stats']['original']) / len(metrics['performance_stats']['original'])
-        mcp_perf = sum(metrics['performance_stats']['mcp']) / len(metrics['performance_stats']['mcp'])
+        original_perf = metrics['performance_stats']['original'].get('avg', float('inf'))
+        mcp_perf = metrics['performance_stats']['mcp'].get('avg', float('inf'))
         
         # Use MCP if it has better success rate and similar or better performance
         return mcp_success_rate > original_success_rate and mcp_perf <= original_perf * 1.2 

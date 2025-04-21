@@ -10,6 +10,7 @@ class ParallelMonitor:
     def __init__(self):
         self.start_time = datetime.now()
         self.metrics = {
+            "start_time": self.start_time,
             "calls": {
                 "original": 0,
                 "mcp": 0,
@@ -139,6 +140,7 @@ class ParallelMonitor:
     def reset_metrics(self) -> Dict[str, Any]:
         """Reset all metrics while preserving start time"""
         self.metrics = {
+            "start_time": self.start_time,
             "calls": {
                 "original": 0,
                 "mcp": 0,
