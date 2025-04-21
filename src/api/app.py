@@ -15,8 +15,7 @@ from ..agents.visualization_agent import VisualizationAgent
 from ..agents.data_source_agent import DataSourceAgent
 from ..agents.monitoring_agent import MonitoringAgent
 from ..agents.parallel_agent import ParallelAgentFactory, ParallelConfig
-from ..agents.analysis_agent import AnalysisAgent
-from ..agents.mcp_analysis_agent import MCPEnabledAnalysisAgent
+from ..agents.sf_agent import MCPEnabledScienceFictionAgent
 
 app = FastAPI(
     title="SFMCP API",
@@ -663,11 +662,16 @@ async def analyze_science_fiction_parallel(request: ParallelAnalysisRequest):
     """Analyze science fiction content using parallel execution"""
     try:
         factory = ParallelAgentFactory(ParallelConfig())
-        factory.register_agent_class("analysis", AnalysisAgent, MCPEnabledAnalysisAgent)
+        # Register the agent classes with their proper names
+        factory.register_agent_class(
+            "science_fiction",
+            ScienceFictionAgent,
+            MCPEnabledScienceFictionAgent
+        )
         
         if request.mode == "parallel":
             results = await factory.execute_parallel(
-                "analysis",
+                "science_fiction",  # Use the registered name
                 "analyze_content",
                 request.content,
                 title=request.title,
@@ -677,7 +681,7 @@ async def analyze_science_fiction_parallel(request: ParallelAnalysisRequest):
             )
         else:
             results = await factory.execute_smart(
-                "analysis",
+                "science_fiction",  # Use the registered name
                 "analyze_content",
                 request.content,
                 title=request.title,
