@@ -33,9 +33,13 @@ class ParallelMonitor:
             }
         }
     
+    def _get_version_str(self, version: AgentVersion) -> str:
+        """Convert AgentVersion to string format used in metrics"""
+        return version.name.lower()
+    
     def track_call(self, version: AgentVersion, success: bool, execution_time: float, error: Exception = None):
         """Track a method call"""
-        version_str = str(version).lower()
+        version_str = self._get_version_str(version)
         self.metrics["calls"][version_str] += 1
         
         if success:
