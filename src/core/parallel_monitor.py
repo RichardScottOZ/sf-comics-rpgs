@@ -3,6 +3,9 @@ from datetime import datetime
 import psutil
 import time
 from .parallel_config import AgentVersion
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ParallelMonitor:
     """Monitor for tracking parallel execution metrics"""
@@ -25,8 +28,8 @@ class ParallelMonitor:
                 "mcp": 0.0
             },
             "performance": {
-                "original": [],
-                "mcp": []
+                "original": {"total": 0, "count": 0, "avg": 0, "max": 0},
+                "mcp": {"total": 0, "count": 0, "avg": 0, "max": 0}
             },
             "performance_stats": {
                 "original": [],
@@ -46,29 +49,37 @@ class ParallelMonitor:
         """Convert AgentVersion to string format used in metrics"""
         return version.name.lower()
     
-    def track_call(self, version: AgentVersion, success: bool, execution_time: float, error: Exception = None):
-        """Track a method call"""
-        version_str = self._get_version_str(version)
-        self.metrics["calls"][version_str] += 1
-        
+    def track_call(
+        self,
+        version: str,
+        success: bool,
+        error: Optional[str] = None,
+        execution_time: Optional[float] = None
+    ):
+        """Track a call to either version of the agent"""
+        logger.info(f"Tracking call for {version} version, success: {success}")
+        self.metrics["calls"][version] += 1
         if success:
-            self.metrics["success"][version_str] += 1
-            self.metrics["performance"][version_str].append(execution_time)
-            self.metrics["resource_usage"][version_str].append(self._get_resource_usage(execution_time))
-        else:
-            error_info = {
-                'error': str(error),
-                'execution_time': execution_time,
-                'timestamp': datetime.now().isoformat()
-            }
-            self.metrics["errors"][version_str].append(error_info)
-            # Track failed call in performance stats with positive time
-            self.metrics["performance"][version_str].append(execution_time)
+            self.metrics["success"][version] += 1
+        if error:
+            self.metrics["errors"][version].append(error)
+        
+        if execution_time is not None:
+            self.metrics["performance"][version]["total"] += execution_time
+            self.metrics["performance"][version]["count"] += 1
+            self.metrics["performance"][version]["avg"] = (
+                self.metrics["performance"][version]["total"] / 
+                self.metrics["performance"][version]["count"]
+            )
+            self.metrics["performance"][version]["max"] = max(
+                self.metrics["performance"][version]["max"],
+                execution_time
+            )
         
         # Update success rate
-        total_calls = self.metrics["calls"][version_str]
-        success_calls = self.metrics["success"][version_str]
-        self.metrics["success_rate"][version_str] = success_calls / total_calls if total_calls > 0 else 0.0
+        total_calls = self.metrics["calls"][version]
+        success_calls = self.metrics["success"][version]
+        self.metrics["success_rate"][version] = success_calls / total_calls if total_calls > 0 else 0.0
     
     def track_parallel_call(self):
         """Track parallel execution"""
@@ -153,8 +164,8 @@ class ParallelMonitor:
                 "mcp": 0.0
             },
             "performance": {
-                "original": [],
-                "mcp": []
+                "original": {"total": 0, "count": 0, "avg": 0, "max": 0},
+                "mcp": {"total": 0, "count": 0, "avg": 0, "max": 0}
             },
             "performance_stats": {
                 "original": [],
