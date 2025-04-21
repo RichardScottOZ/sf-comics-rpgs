@@ -52,7 +52,7 @@ class ParallelAgentFactory:
             try:
                 original_instance = original_class()
                 mcp_instance = mcp_class()
-                logger.info(f"Created instances: {original_instance.name}, {mcp_instance.name}")
+                logger.info(f"Created instances with types: {original_instance.agent_type}, {mcp_instance.agent_type}")
                 self.instances[name] = (original_instance, mcp_instance)
             except Exception as e:
                 logger.error(f"Error creating instances: {str(e)}")

@@ -10,15 +10,26 @@ from ..core.base_agent import BaseAgent as CoreBaseAgent
 logger = logging.getLogger(__name__)
 
 class BaseAgent(CoreBaseAgent):
-    def __init__(self, agent_type: str):
-        logger.info(f"Initializing BaseAgent with type: {agent_type}")
+    """Extended base class for all agents with additional functionality"""
+    
+    def __init__(self, agent_type: Optional[str] = None):
         super().__init__(agent_type)
-        self.agent_type = agent_type
-        logger.info(f"Agent type set to: {self.agent_type}")
         self.client = OpenRouterClient()
         self.cache_dir = settings.CACHE_DIR / "agents" / agent_type
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"Initialized {agent_type} agent with default model: {self.client.default_model}")
+
+    async def validate_input(self, input_data: Dict[str, Any]) -> bool:
+        """Validate input data for the agent"""
+        return True
+        
+    async def preprocess(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Preprocess input data before execution"""
+        return input_data
+        
+    async def postprocess(self, result: Dict[str, Any]) -> Dict[str, Any]:
+        """Postprocess result after execution"""
+        return result
 
     async def _get_analysis(
         self,
