@@ -62,9 +62,9 @@ class ParallelMonitor:
                 'timestamp': datetime.now().isoformat()
             }
             self.metrics["errors"][version_str].append(error_info)
-            # Track failed call in performance stats with negative time
-            self.metrics["performance"][version_str].append(-execution_time)
-            self.metrics["performance_stats"][version_str].append(-execution_time)
+            # Track failed call in performance stats with positive time
+            self.metrics["performance"][version_str].append(execution_time)
+            self.metrics["performance_stats"][version_str].append(execution_time)
         
         # Update success rate
         total_calls = self.metrics["calls"][version_str]
@@ -168,7 +168,7 @@ class ParallelMonitor:
                 "mcp": []
             }
         }
-        return self.start_time
+        return {'start_time': self.start_time}
     
     def get_summary(self) -> str:
         """Get human-readable summary of metrics"""
