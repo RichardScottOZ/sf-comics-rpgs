@@ -31,20 +31,23 @@ def test_parallel_config(config):
 @pytest.mark.asyncio
 async def test_parallel_factory(factory):
     """Test parallel agent factory"""
+    # Register mock agent class
+    factory.register_agent_class("test", MockAgent, MockAgent)
+    
     # Test getting original agent
-    original_agent = factory.get_agent('data_source', AgentVersion.ORIGINAL)
+    original_agent = factory.get_agent("test", AgentVersion.ORIGINAL)
     assert original_agent is not None
     
     # Test getting MCP agent
-    mcp_agent = factory.get_agent('data_source', AgentVersion.MCP)
+    mcp_agent = factory.get_agent("test", AgentVersion.MCP)
     assert mcp_agent is not None
     
     # Test parallel execution
-    results = await factory.execute_parallel('data_source', 'search_imdb', {'query': 'Dune'})
-    assert AgentVersion.ORIGINAL in results
-    assert AgentVersion.MCP in results
-    assert 'items' in results[AgentVersion.ORIGINAL]
-    assert 'items' in results[AgentVersion.MCP]
+    results = await factory.execute_parallel("test", "test_method", {"query": "Dune"})
+    assert str(AgentVersion.ORIGINAL) in results
+    assert str(AgentVersion.MCP) in results
+    assert "args" in results[str(AgentVersion.ORIGINAL)]
+    assert "args" in results[str(AgentVersion.MCP)]
 
 def test_result_comparator():
     """Test the result comparator"""

@@ -17,12 +17,7 @@ class MockAgent(BaseAgent):
 def factory():
     config = ParallelConfig()
     factory = ParallelAgentFactory(config)
-    factory.agent_classes = {
-        'test': {
-            AgentVersion.ORIGINAL: MockAgent,
-            AgentVersion.MCP: MockAgent
-        }
-    }
+    factory.register_agent_class("test", MockAgent, MockAgent)
     return factory
 
 @pytest.fixture
@@ -44,38 +39,38 @@ def test_initialization():
 def test_get_agent(factory):
     """Test getting agent instances"""
     # Get original version
-    agent = factory.get_agent('test', AgentVersion.ORIGINAL)
+    agent = factory.get_agent("test", AgentVersion.ORIGINAL)
     assert isinstance(agent, MockAgent)
     
     # Get MCP version
-    agent = factory.get_agent('test', AgentVersion.MCP)
+    agent = factory.get_agent("test", AgentVersion.MCP)
     assert isinstance(agent, MockAgent)
     
     # Get default version
-    agent = factory.get_agent('test')
+    agent = factory.get_agent("test")
     assert isinstance(agent, MockAgent)
 
 def test_get_agent_invalid_type(factory):
     """Test getting agent with invalid type"""
-    with pytest.raises(ValueError, match="Invalid agent type"):
+    with pytest.raises(ValueError, match="Agent type 'invalid_type' not registered"):
         factory.get_agent("invalid_type")
 
 def test_get_agent_invalid_version(factory):
     """Test getting agent with invalid version"""
-    with pytest.raises(ValueError, match="Invalid version"):
+    with pytest.raises(ValueError, match="Version 'invalid_version' not available for agent type 'test'"):
         factory.get_agent("test", "invalid_version")
 
 @pytest.mark.asyncio
 async def test_execute_version(factory):
     """Test executing a method on a specific version"""
-    result = await factory._execute_version('test', AgentVersion.ORIGINAL, 'test_method', 'arg1', kwarg1='value1')
-    assert result == {"args": ('arg1',), "kwargs": {'kwarg1': 'value1'}}
+    result = await factory._execute_version("test", AgentVersion.ORIGINAL, "test_method", "arg1", kwarg1="value1")
+    assert result == {"args": ("arg1",), "kwargs": {"kwarg1": "value1"}}
 
 @pytest.mark.asyncio
 async def test_execute_version_error(factory):
     """Test executing a method that raises an error"""
-    result = await factory._execute_version('test', AgentVersion.ORIGINAL, 'nonexistent_method')
-    assert "error" in result
+    with pytest.raises(AttributeError):
+        await factory._execute_version("test", AgentVersion.ORIGINAL, "nonexistent_method")
 
 @pytest.mark.asyncio
 async def test_execute_parallel(factory):
