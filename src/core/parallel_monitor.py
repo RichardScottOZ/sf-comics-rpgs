@@ -5,35 +5,85 @@ import time
 from .parallel_config import AgentVersion
 
 class ParallelMonitor:
-    """Monitor parallel operation performance and metrics"""
+    """Monitor for tracking parallel execution metrics"""
     
     def __init__(self):
+        self.start_time = datetime.now()
         self.metrics = {
-            'calls': {
-                'original': 0,
-                'mcp': 0,
-                'parallel': 0
-            },
-            'success': {
-                'original': 0,
-                'mcp': 0
-            },
-            'errors': {
-                'original': [],
-                'mcp': []
-            },
-            'performance': {
-                'original': [],
-                'mcp': []
-            },
-            'resource_usage': {
-                'original': [],
-                'mcp': []
-            },
-            'start_time': datetime.now().isoformat(),
-            'last_reset': datetime.now().isoformat()
+            "original_calls": 0,
+            "mcp_calls": 0,
+            "original_success": 0,
+            "mcp_success": 0,
+            "original_performance": 0.0,
+            "mcp_performance": 0.0,
+            "original_errors": [],
+            "mcp_errors": []
         }
-        
+    
+    def track_call(self, version: AgentVersion, success: bool, execution_time: float, error: Exception = None):
+        """Track a method call"""
+        if version == AgentVersion.ORIGINAL:
+            self.metrics["original_calls"] += 1
+            if success:
+                self.metrics["original_success"] += 1
+                self.metrics["original_performance"] = (
+                    (self.metrics["original_performance"] * (self.metrics["original_success"] - 1) + execution_time) /
+                    self.metrics["original_success"]
+                )
+            else:
+                self.metrics["original_errors"].append(str(error))
+        else:
+            self.metrics["mcp_calls"] += 1
+            if success:
+                self.metrics["mcp_success"] += 1
+                self.metrics["mcp_performance"] = (
+                    (self.metrics["mcp_performance"] * (self.metrics["mcp_success"] - 1) + execution_time) /
+                    self.metrics["mcp_success"]
+                )
+            else:
+                self.metrics["mcp_errors"].append(str(error))
+    
+    def get_metrics(self) -> Dict[str, Any]:
+        """Get current metrics"""
+        metrics = self.metrics.copy()
+        metrics["original_reliability"] = (
+            self.metrics["original_success"] / self.metrics["original_calls"]
+            if self.metrics["original_calls"] > 0 else 0.0
+        )
+        metrics["mcp_reliability"] = (
+            self.metrics["mcp_success"] / self.metrics["mcp_calls"]
+            if self.metrics["mcp_calls"] > 0 else 0.0
+        )
+        return metrics
+    
+    def reset_metrics(self):
+        """Reset all metrics"""
+        self.metrics = {
+            "original_calls": 0,
+            "mcp_calls": 0,
+            "original_success": 0,
+            "mcp_success": 0,
+            "original_performance": 0.0,
+            "mcp_performance": 0.0,
+            "original_errors": [],
+            "mcp_errors": []
+        }
+    
+    def get_summary(self) -> str:
+        """Get human-readable summary of metrics"""
+        metrics = self.get_metrics()
+        return (
+            f"Monitoring started at: {self.start_time}\n"
+            f"Original calls: {metrics['original_calls']}\n"
+            f"Mcp calls: {metrics['mcp_calls']}\n"
+            f"Original success rate: {metrics['original_reliability']:.2%}\n"
+            f"Mcp success rate: {metrics['mcp_reliability']:.2%}\n"
+            f"Original performance: {metrics['original_performance']:.3f}s\n"
+            f"Mcp performance: {metrics['mcp_performance']:.3f}s\n"
+            f"Original errors: {len(metrics['original_errors'])}\n"
+            f"Mcp errors: {len(metrics['mcp_errors'])}"
+        )
+
     def _get_resource_usage(self) -> Dict[str, float]:
         """Get current resource usage"""
         process = psutil.Process()
@@ -44,85 +94,18 @@ class ParallelMonitor:
             'threads': process.num_threads()
         }
         
-    def track_call(self, version: AgentVersion, success: bool = True, 
-                  error: Optional[Exception] = None, execution_time: float = 0):
-        """Track API call and its outcome"""
-        version_str = version.value
-        
-        # Track call count
-        self.metrics['calls'][version_str] += 1
-        
-        # Track success/failure
-        if success:
-            self.metrics['success'][version_str] += 1
-        else:
-            self.metrics['errors'][version_str].append({
-                'timestamp': datetime.now().isoformat(),
-                'error': str(error),
-                'traceback': getattr(error, '__traceback__', None)
-            })
-            
-        # Track performance
-        if execution_time > 0:
-            self.metrics['performance'][version_str].append(execution_time)
-            
-        # Track resource usage
-        self.metrics['resource_usage'][version_str].append({
-            'timestamp': datetime.now().isoformat(),
-            'usage': self._get_resource_usage(),
-            'execution_time': execution_time
-        })
-            
     def track_parallel_call(self):
         """Track parallel execution"""
         self.metrics['calls']['parallel'] += 1
         
-    def reset_metrics(self):
-        """Reset all metrics while preserving start time"""
-        start_time = self.metrics['start_time']
-        self.metrics = {
-            'calls': {
-                'original': 0,
-                'mcp': 0,
-                'parallel': 0
-            },
-            'success': {
-                'original': 0,
-                'mcp': 0
-            },
-            'errors': {
-                'original': [],
-                'mcp': []
-            },
-            'performance': {
-                'original': [],
-                'mcp': []
-            },
-            'resource_usage': {
-                'original': [],
-                'mcp': []
-            },
-            'start_time': start_time,
-            'last_reset': datetime.now().isoformat()
-        }
-        
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics_with_statistics(self) -> Dict[str, Any]:
         """Get current metrics with statistics"""
-        metrics = self.metrics.copy()
+        metrics = self.get_metrics()
         
-        # Calculate success rates
-        metrics['success_rate'] = {}
-        for version in ['original', 'mcp']:
-            total_calls = metrics['calls'][version]
-            if total_calls > 0:
-                metrics['success_rate'][version] = metrics['success'][version] / total_calls
-            else:
-                metrics['success_rate'][version] = 0
-                
         # Calculate performance statistics
         metrics['performance_stats'] = {}
         for version in ['original', 'mcp']:
-            times = metrics['performance'][version]
+            times = getattr(self, f"{version}_performance")
             if times:
                 metrics['performance_stats'][version] = {
                     'min': min(times),
@@ -137,7 +120,7 @@ class ParallelMonitor:
         # Calculate resource usage statistics
         metrics['resource_stats'] = {}
         for version in ['original', 'mcp']:
-            usages = metrics['resource_usage'][version]
+            usages = getattr(self, f"{version}_errors")
             if usages:
                 metrics['resource_stats'][version] = {
                     'cpu': {
@@ -160,26 +143,25 @@ class ParallelMonitor:
                 
         return metrics
     
-    def get_summary(self) -> str:
-        """Get human-readable summary of metrics"""
-        metrics = self.get_metrics()
+    def get_summary_with_statistics(self) -> str:
+        """Get human-readable summary of metrics with statistics"""
+        metrics = self.get_metrics_with_statistics()
         summary = []
         
-        summary.append(f"Monitoring started at: {metrics['start_time']}")
-        summary.append(f"Last reset at: {metrics['last_reset']}")
+        summary.append(f"Monitoring started at: {self.start_time}")
         
         summary.append("\nCall Statistics:")
         for version in ['original', 'mcp', 'parallel']:
-            summary.append(f"{version.title()} calls: {metrics['calls'][version]}")
+            summary.append(f"{version.title()} calls: {getattr(self, f'{version}_calls')}")
             
         summary.append("\nSuccess Rates:")
         for version in ['original', 'mcp']:
-            rate = metrics['success_rate'][version]
+            rate = getattr(self, f"{version}_reliability")
             summary.append(f"{version.title()} success rate: {rate:.2%}")
             
         summary.append("\nError Counts:")
         for version in ['original', 'mcp']:
-            summary.append(f"{version.title()} errors: {len(metrics['errors'][version])}")
+            summary.append(f"{version.title()} errors: {len(getattr(self, f'{version}_errors'))}")
             
         summary.append("\nPerformance Statistics:")
         for version in ['original', 'mcp']:
