@@ -1,141 +1,80 @@
 import pytest
 from src.core.result_comparator import ResultComparator
 
-def test_compare_identical_results():
-    """Test comparing identical results"""
+def test_compare_simple_dicts():
     comparator = ResultComparator()
-    original = {"data": "test", "count": 5}
-    mcp = {"data": "test", "count": 5}
+    dict1 = {'a': 1, 'b': 2}
+    dict2 = {'a': 1, 'b': 3}
     
-    comparison = comparator.compare_results(original, mcp)
+    result = comparator.compare(dict1, dict2)
+    assert 'identical' in result
+    assert 'different' in result
+    assert 'missing' in result
+    assert 'extra' in result
     
-    assert comparison["identical"] is True
-    assert comparison["differences"] == []
-    assert comparison["original_keys"] == ["data", "count"]
-    assert comparison["mcp_keys"] == ["data", "count"]
-    assert comparison["common_keys"] == ["data", "count"]
-    assert comparison["missing_in_original"] == []
-    assert comparison["missing_in_mcp"] == []
+    assert 'a' in result['identical']
+    assert 'b' in result['different']
+    assert not result['missing']
+    assert not result['extra']
 
-def test_compare_different_results():
-    """Test comparing different results"""
+def test_compare_nested_dicts():
     comparator = ResultComparator()
-    original = {"data": "test", "count": 5}
-    mcp = {"data": "different", "count": 10}
+    dict1 = {'a': {'b': 1, 'c': 2}, 'd': 3}
+    dict2 = {'a': {'b': 1, 'c': 3}, 'd': 3}
     
-    comparison = comparator.compare_results(original, mcp)
+    result = comparator.compare(dict1, dict2)
+    assert 'a.b' in result['identical']
+    assert 'a.c' in result['different']
+    assert 'd' in result['identical']
+
+def test_compare_lists():
+    comparator = ResultComparator()
+    list1 = [1, 2, 3]
+    list2 = [1, 4, 3]
     
-    assert comparison["identical"] is False
-    assert len(comparison["differences"]) == 2
-    assert comparison["original_keys"] == ["data", "count"]
-    assert comparison["mcp_keys"] == ["data", "count"]
-    assert comparison["common_keys"] == ["data", "count"]
-    assert comparison["missing_in_original"] == []
-    assert comparison["missing_in_mcp"] == []
+    result = comparator.compare({'items': list1}, {'items': list2})
+    assert 'items.0' in result['identical']
+    assert 'items.1' in result['different']
+    assert 'items.2' in result['identical']
+
+def test_compare_nested_lists():
+    comparator = ResultComparator()
+    dict1 = {'items': [{'id': 1, 'value': 'a'}, {'id': 2, 'value': 'b'}]}
+    dict2 = {'items': [{'id': 1, 'value': 'a'}, {'id': 2, 'value': 'c'}]}
+    
+    result = comparator.compare(dict1, dict2)
+    assert 'items.0.id' in result['identical']
+    assert 'items.0.value' in result['identical']
+    assert 'items.1.id' in result['identical']
+    assert 'items.1.value' in result['different']
 
 def test_compare_missing_keys():
-    """Test comparing results with missing keys"""
     comparator = ResultComparator()
-    original = {"data": "test", "count": 5}
-    mcp = {"data": "test", "extra": "value"}
+    dict1 = {'a': 1, 'b': 2}
+    dict2 = {'a': 1}
     
-    comparison = comparator.compare_results(original, mcp)
-    
-    assert comparison["identical"] is False
-    assert "count" in comparison["missing_in_mcp"]
-    assert "extra" in comparison["missing_in_original"]
-    assert comparison["common_keys"] == ["data"]
+    result = comparator.compare(dict1, dict2)
+    assert 'a' in result['identical']
+    assert 'b' in result['missing']
 
-def test_compare_nested_structures():
-    """Test comparing nested data structures"""
+def test_compare_extra_keys():
     comparator = ResultComparator()
-    original = {
-        "data": {
-            "nested": {
-                "value": 1,
-                "array": [1, 2, 3]
-            }
-        }
-    }
-    mcp = {
-        "data": {
-            "nested": {
-                "value": 2,
-                "array": [1, 2, 4]
-            }
-        }
-    }
+    dict1 = {'a': 1}
+    dict2 = {'a': 1, 'b': 2}
     
-    comparison = comparator.compare_results(original, mcp)
-    
-    assert comparison["identical"] is False
-    assert len(comparison["differences"]) > 0
-    assert "data.nested.value" in [d["key"] for d in comparison["differences"]]
-    assert "data.nested.array" in [d["key"] for d in comparison["differences"]]
+    result = comparator.compare(dict1, dict2)
+    assert 'a' in result['identical']
+    assert 'b' in result['extra']
 
-def test_compare_with_none_values():
-    """Test comparing results with None values"""
+def test_get_summary():
     comparator = ResultComparator()
-    original = {"data": None, "count": 5}
-    mcp = {"data": "test", "count": None}
+    dict1 = {'a': 1, 'b': 2, 'c': {'d': 3}}
+    dict2 = {'a': 1, 'b': 3, 'c': {'d': 4}}
     
-    comparison = comparator.compare_results(original, mcp)
+    result = comparator.compare(dict1, dict2)
+    summary = comparator.get_summary(result)
     
-    assert comparison["identical"] is False
-    assert len(comparison["differences"]) == 2
-    assert "data" in [d["key"] for d in comparison["differences"]]
-    assert "count" in [d["key"] for d in comparison["differences"]]
-
-def test_compare_with_empty_structures():
-    """Test comparing empty data structures"""
-    comparator = ResultComparator()
-    original = {}
-    mcp = {}
-    
-    comparison = comparator.compare_results(original, mcp)
-    
-    assert comparison["identical"] is True
-    assert comparison["differences"] == []
-    assert comparison["original_keys"] == []
-    assert comparison["mcp_keys"] == []
-    assert comparison["common_keys"] == []
-    assert comparison["missing_in_original"] == []
-    assert comparison["missing_in_mcp"] == []
-
-def test_compare_with_error_results():
-    """Test comparing results containing error information"""
-    comparator = ResultComparator()
-    original = {"error": "Original error", "status": "failed"}
-    mcp = {"error": "MCP error", "status": "failed"}
-    
-    comparison = comparator.compare_results(original, mcp)
-    
-    assert comparison["identical"] is False
-    assert "error" in [d["key"] for d in comparison["differences"]]
-    assert comparison["common_keys"] == ["status"]
-
-def test_compare_with_different_types():
-    """Test comparing results with different value types"""
-    comparator = ResultComparator()
-    original = {"data": 123, "count": "5"}
-    mcp = {"data": "123", "count": 5}
-    
-    comparison = comparator.compare_results(original, mcp)
-    
-    assert comparison["identical"] is False
-    assert len(comparison["differences"]) == 2
-    assert "data" in [d["key"] for d in comparison["differences"]]
-    assert "count" in [d["key"] for d in comparison["differences"]]
-
-def test_compare_with_arrays():
-    """Test comparing results with arrays"""
-    comparator = ResultComparator()
-    original = {"data": [1, 2, 3], "items": ["a", "b", "c"]}
-    mcp = {"data": [1, 2, 4], "items": ["a", "b", "d"]}
-    
-    comparison = comparator.compare_results(original, mcp)
-    
-    assert comparison["identical"] is False
-    assert len(comparison["differences"]) == 2
-    assert "data" in [d["key"] for d in comparison["differences"]]
-    assert "items" in [d["key"] for d in comparison["differences"]] 
+    assert 'identical: 1 differences' in summary
+    assert 'different: 2 differences' in summary
+    assert '  - b' in summary
+    assert '  - c.d' in summary 

@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from src.core.parallel_factory import ParallelAgentFactory
 from src.core.parallel_config import ParallelConfig, AgentVersion
 from src.core.base_agent import BaseAgent
+from src.core.result_comparator import ResultComparator
 
 class MockAgent(BaseAgent):
     async def test_method(self, *args, **kwargs):
@@ -52,12 +53,12 @@ def test_get_agent(factory):
 
 def test_get_agent_invalid_type(factory):
     """Test getting agent with invalid type"""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Version .* not enabled for agent type"):
         factory.get_agent('invalid_type')
 
 def test_get_agent_invalid_version(factory):
     """Test getting agent with invalid version"""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Version .* not enabled for agent type"):
         factory.get_agent('test', 'invalid_version')
 
 @pytest.mark.asyncio
@@ -77,17 +78,17 @@ async def test_execute_parallel(factory):
     """Test parallel execution"""
     results = await factory.execute_parallel('test', 'test_method', 'arg1', kwarg1='value1')
     
-    assert AgentVersion.ORIGINAL in results
-    assert AgentVersion.MCP in results
-    assert results[AgentVersion.ORIGINAL] == {"args": ('arg1',), "kwargs": {'kwarg1': 'value1'}}
-    assert results[AgentVersion.MCP] == {"args": ('arg1',), "kwargs": {'kwarg1': 'value1'}}
+    assert str(AgentVersion.ORIGINAL) in results
+    assert str(AgentVersion.MCP) in results
+    assert results[str(AgentVersion.ORIGINAL)] == {"args": ('arg1',), "kwargs": {'kwarg1': 'value1'}}
+    assert results[str(AgentVersion.MCP)] == {"args": ('arg1',), "kwargs": {'kwarg1': 'value1'}}
 
 @pytest.mark.asyncio
 async def test_execute_smart(factory):
     """Test smart execution"""
     # First call should use MCP (default)
     result = await factory.execute_smart('test', 'test_method', 'arg1')
-    assert AgentVersion.MCP in result
+    assert str(AgentVersion.MCP) in result
     
     # Add some performance data
     for _ in range(15):
@@ -97,13 +98,13 @@ async def test_execute_smart(factory):
     # Now should choose based on performance
     result = await factory.execute_smart('test', 'test_method', 'arg1')
     assert len(result) == 1
-    assert list(result.keys())[0] in [AgentVersion.ORIGINAL, AgentVersion.MCP]
+    assert list(result.keys())[0] in [str(AgentVersion.ORIGINAL), str(AgentVersion.MCP)]
 
 def test_get_comparison(factory):
     """Test result comparison"""
     results = {
-        AgentVersion.ORIGINAL: {"data": "original"},
-        AgentVersion.MCP: {"data": "mcp"}
+        str(AgentVersion.ORIGINAL): {"data": "original"},
+        str(AgentVersion.MCP): {"data": "mcp"}
     }
     comparison = factory.get_comparison(results)
     assert isinstance(comparison, dict)
