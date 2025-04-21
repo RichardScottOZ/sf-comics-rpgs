@@ -1,90 +1,87 @@
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Union
 from .parallel_config import AgentVersion
+import json
 
 class ResultComparator:
     """Compare results from parallel implementations"""
     
-    def compare_results(self, original: Dict[str, Any], mcp: Dict[str, Any]) -> Dict[str, Any]:
-        """Compare results from both implementations"""
+    def __init__(self):
+        self.comparison_keys = {
+            'identical': 'identical',
+            'different': 'different',
+            'missing': 'missing',
+            'extra': 'extra'
+        }
+    
+    def compare(self, result1: Dict[str, Any], result2: Dict[str, Any]) -> Dict[str, Any]:
+        """Compare two results and return a comparison dictionary"""
         comparison = {
-            'matches': True,
-            'differences': [],
-            'original_count': len(original.get('items', [])),
-            'mcp_count': len(mcp.get('items', [])),
-            'common_items': [],
-            'unique_to_original': [],
-            'unique_to_mcp': [],
-            'performance': {
-                'original_time': original.get('execution_time', 0),
-                'mcp_time': mcp.get('execution_time', 0)
-            }
+            self.comparison_keys['identical']: [],
+            self.comparison_keys['different']: [],
+            self.comparison_keys['missing']: [],
+            self.comparison_keys['extra']: []
         }
         
-        # Handle error cases
-        if 'error' in original:
-            comparison['original_error'] = original['error']
-            comparison['matches'] = False
-        if 'error' in mcp:
-            comparison['mcp_error'] = mcp['error']
-            comparison['matches'] = False
-            
-        if 'error' in original or 'error' in mcp:
-            return comparison
-            
-        # Compare item lists
-        original_items = {item['id']: item for item in original.get('items', [])}
-        mcp_items = {item['id']: item for item in mcp.get('items', [])}
-        
-        # Find common and unique items
-        common_ids = set(original_items.keys()) & set(mcp_items.keys())
-        comparison['common_items'] = list(common_ids)
-        
-        comparison['unique_to_original'] = list(
-            set(original_items.keys()) - set(mcp_items.keys())
-        )
-        comparison['unique_to_mcp'] = list(
-            set(mcp_items.keys()) - set(original_items.keys())
-        )
-        
-        # Check for differences in common items
-        for item_id in common_ids:
-            if original_items[item_id] != mcp_items[item_id]:
-                comparison['matches'] = False
-                comparison['differences'].append({
-                    'id': item_id,
-                    'original': original_items[item_id],
-                    'mcp': mcp_items[item_id]
-                })
-                
+        self._compare_dicts(result1, result2, comparison, [])
         return comparison
     
-    def get_summary(self, comparison: Dict[str, Any]) -> str:
-        """Get human-readable summary of comparison"""
+    def _compare_dicts(self, dict1: Dict[str, Any], dict2: Dict[str, Any], 
+                      comparison: Dict[str, List[str]], path: List[str]) -> None:
+        """Recursively compare two dictionaries"""
+        # Check keys in dict1
+        for key in dict1:
+            current_path = path + [key]
+            path_str = '.'.join(current_path)
+            
+            if key not in dict2:
+                comparison[self.comparison_keys['missing']].append(path_str)
+                continue
+            
+            value1 = dict1[key]
+            value2 = dict2[key]
+            
+            if isinstance(value1, dict) and isinstance(value2, dict):
+                self._compare_dicts(value1, value2, comparison, current_path)
+            elif isinstance(value1, list) and isinstance(value2, list):
+                self._compare_lists(value1, value2, comparison, current_path)
+            elif value1 == value2:
+                comparison[self.comparison_keys['identical']].append(path_str)
+            else:
+                comparison[self.comparison_keys['different']].append(path_str)
+        
+        # Check for extra keys in dict2
+        for key in dict2:
+            if key not in dict1:
+                path_str = '.'.join(path + [key])
+                comparison[self.comparison_keys['extra']].append(path_str)
+    
+    def _compare_lists(self, list1: List[Any], list2: List[Any], 
+                      comparison: Dict[str, List[str]], path: List[str]) -> None:
+        """Compare two lists"""
+        path_str = '.'.join(path)
+        
+        if len(list1) != len(list2):
+            comparison[self.comparison_keys['different']].append(f"{path_str}.length")
+            return
+        
+        for i, (item1, item2) in enumerate(zip(list1, list2)):
+            current_path = path + [str(i)]
+            
+            if isinstance(item1, dict) and isinstance(item2, dict):
+                self._compare_dicts(item1, item2, comparison, current_path)
+            elif isinstance(item1, list) and isinstance(item2, list):
+                self._compare_lists(item1, item2, comparison, current_path)
+            elif item1 == item2:
+                comparison[self.comparison_keys['identical']].append('.'.join(current_path))
+            else:
+                comparison[self.comparison_keys['different']].append('.'.join(current_path))
+    
+    def get_summary(self, comparison: Dict[str, List[str]]) -> str:
+        """Get a human-readable summary of the comparison"""
         summary = []
-        
-        if 'original_error' in comparison:
-            summary.append("Original implementation failed: " + comparison['original_error'])
-        if 'mcp_error' in comparison:
-            summary.append("MCP implementation failed: " + comparison['mcp_error'])
-            
-        if 'original_error' in comparison or 'mcp_error' in comparison:
-            return "\n".join(summary)
-            
-        summary.extend([
-            f"Original results: {comparison['original_count']} items",
-            f"MCP results: {comparison['mcp_count']} items",
-            f"Common items: {len(comparison['common_items'])}",
-            f"Unique to original: {len(comparison['unique_to_original'])}",
-            f"Unique to MCP: {len(comparison['unique_to_mcp'])}"
-        ])
-        
-        if not comparison['matches']:
-            summary.append(f"Found {len(comparison['differences'])} differences in common items")
-            
-        performance = comparison['performance']
-        summary.extend([
-            f"Original execution time: {performance['original_time']:.2f}s",
-            f"MCP execution time: {performance['mcp_time']:.2f}s"
-        ])
-        
-        return "\n".join(summary) 
+        for key, paths in comparison.items():
+            if paths:
+                summary.append(f"{key}: {len(paths)} differences")
+                for path in paths:
+                    summary.append(f"  - {path}")
+        return '\n'.join(summary) 
