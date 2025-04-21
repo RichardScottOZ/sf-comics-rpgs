@@ -63,7 +63,7 @@ class ParallelAgentFactory:
                 return result
             except Exception as e:
                 self.monitor.track_call("original", False, str(e))
-                raise
+                return None
 
         async def run_mcp():
             try:
@@ -72,17 +72,18 @@ class ParallelAgentFactory:
                 return result
             except Exception as e:
                 self.monitor.track_call("mcp", False, str(e))
-                raise
+                return None
 
-        results = await asyncio.gather(
+        # Run both versions in parallel
+        original_result, mcp_result = await asyncio.gather(
             run_original(),
             run_mcp(),
-            return_exceptions=True
+            return_exceptions=False
         )
 
         return {
-            "original": results[0] if not isinstance(results[0], Exception) else None,
-            "mcp": results[1] if not isinstance(results[1], Exception) else None
+            "original": original_result,
+            "mcp": mcp_result
         }
 
     async def execute_smart(
