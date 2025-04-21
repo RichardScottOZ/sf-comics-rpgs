@@ -54,7 +54,6 @@ class ParallelMonitor:
         if success:
             self.metrics["success"][version_str] += 1
             self.metrics["performance"][version_str].append(execution_time)
-            self.metrics["performance_stats"][version_str].append(execution_time)
             self.metrics["resource_usage"][version_str].append(self._get_resource_usage(execution_time))
         else:
             error_info = {
@@ -65,7 +64,6 @@ class ParallelMonitor:
             self.metrics["errors"][version_str].append(error_info)
             # Track failed call in performance stats with positive time
             self.metrics["performance"][version_str].append(execution_time)
-            self.metrics["performance_stats"][version_str].append(execution_time)
         
         # Update success rate
         total_calls = self.metrics["calls"][version_str]
@@ -99,7 +97,7 @@ class ParallelMonitor:
         # Calculate performance statistics
         metrics["performance_stats"] = {}
         for version in ["original", "mcp"]:
-            times = self.metrics["performance_stats"][version]
+            times = self.metrics["performance"][version]
             if times:
                 metrics["performance_stats"][version] = {
                     "min": min(times),
