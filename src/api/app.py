@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, List, Any
 from ..agents.sf_agent import ScienceFictionAgent
 from ..agents.comics_agent import ComicsAgent
-from ..agents.rpg_agent import RPGAgent
+from ..agents.rpg_agent import RPGAgent, MCPEnabledRPGAgent
 from ..agents.comparative_agent import ComparativeAgent
 from ..analysis.temporal_analysis import TemporalAnalysis
 from ..analysis.character_network import CharacterNetwork
@@ -152,6 +152,9 @@ class ParallelAnalysisRequest(BaseModel):
     author: Optional[str] = None
     publisher: Optional[str] = None
     creator: Optional[str] = None
+    system: Optional[str] = None
+    source: Optional[str] = None
+    edition: Optional[str] = None
     year: Optional[int] = None
     model: Optional[str] = None
     mode: Optional[str] = "parallel"  # 'parallel', 'original', or 'mcp'
@@ -733,6 +736,51 @@ async def analyze_comics_parallel(request: ParallelAnalysisRequest):
                 publisher=request.publisher,
                 year=request.year,
                 creator=request.creator,
+                model=request.model
+            )
+            
+        return {
+            "results": results,
+            "comparison": factory.get_comparison(results),
+            "metrics": factory.monitor.get_metrics()
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/analyze/parallel/rpg", tags=["Parallel Execution"])
+async def analyze_rpg_parallel(request: ParallelAnalysisRequest):
+    """Analyze RPG content using parallel execution"""
+    try:
+        factory = ParallelAgentFactory(ParallelConfig())
+        # Register the agent classes with their proper names
+        factory.register_agent_class(
+            "rpg",
+            RPGAgent,
+            MCPEnabledRPGAgent
+        )
+        
+        if request.mode == "parallel":
+            results = await factory.execute_parallel(
+                "rpg",  # Use the registered name
+                "analyze_content",
+                request.content,
+                title=request.title,
+                system=request.system,
+                source=request.source,
+                edition=request.edition,
+                publisher=request.publisher,
+                model=request.model
+            )
+        else:
+            results = await factory.execute_smart(
+                "rpg",  # Use the registered name
+                "analyze_content",
+                request.content,
+                title=request.title,
+                system=request.system,
+                source=request.source,
+                edition=request.edition,
+                publisher=request.publisher,
                 model=request.model
             )
             
