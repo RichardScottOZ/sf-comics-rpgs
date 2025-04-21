@@ -992,4 +992,163 @@ print(result)
    - All visualizations return base64-encoded images
    - Enhanced mode provides more detailed visualizations
    - Metadata includes type-specific information
-   - PNG format is recommended for best quality 
+   - PNG format is recommended for best quality
+
+### Parallel Execution Framework
+
+The parallel execution framework allows you to run analyses using different modes:
+- `original`: Uses the original agent implementation
+- `mcp`: Uses the MCP-enhanced agent implementation
+- `parallel`: Runs both versions and compares results (default)
+
+#### Analyze Science Fiction in Parallel
+```bash
+POST /analyze/parallel/sf
+```
+Analyze science fiction content using parallel execution.
+
+**Request Body:**
+```json
+{
+    "content": "The spice must flow...",
+    "title": "Dune",
+    "author": "Frank Herbert",
+    "year": 1965,
+    "model": "google/gemma-7b-it",
+    "mode": "parallel"
+}
+```
+
+#### Analyze Comics in Parallel
+```bash
+POST /analyze/parallel/comics
+```
+Analyze comics content using parallel execution.
+
+**Request Body:**
+```json
+{
+    "content": "With great power comes great responsibility...",
+    "title": "Amazing Fantasy #15",
+    "publisher": "Marvel Comics",
+    "year": 1962,
+    "creator": "Stan Lee",
+    "model": "google/gemma-7b-it",
+    "mode": "mcp"
+}
+```
+
+#### Analyze RPG Content in Parallel
+```bash
+POST /analyze/parallel/rpg
+```
+Analyze RPG content using parallel execution.
+
+**Request Body:**
+```json
+{
+    "content": "The d20 System is a role-playing game system that uses a twenty-sided die...",
+    "title": "Player's Handbook",
+    "system": "D&D 3.5",
+    "source": "Core Rulebook",
+    "edition": "3.5",
+    "publisher": "Wizards of the Coast",
+    "year": 2003,
+    "model": "google/gemma-7b-it",
+    "mode": "original"
+}
+```
+
+**Common Parameters:**
+- `content` (required): The content to analyze
+- `title` (optional): Title of the work
+- `author` (optional): Author of the work
+- `publisher` (optional): Publisher of the work
+- `creator` (optional): Creator of the work
+- `system` (optional): RPG system name
+- `source` (optional): Source of the content
+- `edition` (optional): Edition information
+- `year` (optional): Publication year
+- `model` (optional): Model to use for analysis
+- `mode` (optional): Execution mode ("parallel", "original", or "mcp", default: "parallel")
+
+**Response Format:**
+For parallel mode:
+```json
+{
+    "results": {
+        "original": { /* original analysis results */ },
+        "mcp": { /* MCP analysis results */ }
+    },
+    "comparison": { /* comparison of results */ },
+    "metrics": {
+        "start_time": "2024-03-14T12:00:00Z",
+        "calls": {
+            "original": 1,
+            "mcp": 1,
+            "parallel": 0
+        },
+        "success": {
+            "original": 1,
+            "mcp": 1
+        },
+        "success_rate": {
+            "original": 1.0,
+            "mcp": 1.0
+        },
+        "performance": {
+            "original": { /* performance metrics */ },
+            "mcp": { /* performance metrics */ }
+        }
+    }
+}
+```
+
+For single mode (original or mcp):
+```json
+{
+    "results": { /* analysis results */ },
+    "metrics": {
+        "start_time": "2024-03-14T12:00:00Z",
+        "calls": {
+            "original": 1,
+            "mcp": 0,
+            "parallel": 0
+        },
+        "success": {
+            "original": 1,
+            "mcp": 0
+        },
+        "success_rate": {
+            "original": 1.0,
+            "mcp": 0.0
+        },
+        "performance": {
+            "original": { /* performance metrics */ },
+            "mcp": { /* performance metrics */ }
+        }
+    }
+}
+```
+
+**Example Use Cases:**
+1. Testing original vs MCP performance:
+```bash
+curl -X POST "http://localhost:8000/analyze/parallel/sf" \
+     -H "Content-Type: application/json" \
+     -d '{"content": "The spice must flow...", "title": "Dune", "mode": "parallel"}'
+```
+
+2. Using only MCP version:
+```bash
+curl -X POST "http://localhost:8000/analyze/parallel/comics" \
+     -H "Content-Type: application/json" \
+     -d '{"content": "With great power...", "title": "Amazing Fantasy #15", "mode": "mcp"}'
+```
+
+3. Using only original version:
+```bash
+curl -X POST "http://localhost:8000/analyze/parallel/rpg" \
+     -H "Content-Type: application/json" \
+     -d '{"content": "The d20 System...", "title": "Player'\''s Handbook", "mode": "original"}'
+``` 
