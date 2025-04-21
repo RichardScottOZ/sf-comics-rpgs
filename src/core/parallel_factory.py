@@ -158,8 +158,12 @@ class ParallelAgentFactory:
         """Determine if MCP version should be used based on performance and reliability"""
         metrics = self.monitor.get_metrics()
         
-        # If we don't have enough data yet, use MCP
+        # If we don't have any calls yet, use MCP
         if not metrics['calls']['original'] or not metrics['calls']['mcp']:
+            return True
+            
+        # If we don't have any performance data yet, use MCP
+        if not metrics['performance_stats']['original'] or not metrics['performance_stats']['mcp']:
             return True
             
         # Calculate success rates
