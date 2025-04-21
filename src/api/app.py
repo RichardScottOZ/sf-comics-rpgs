@@ -150,6 +150,8 @@ class ParallelAnalysisRequest(BaseModel):
     content: str
     title: Optional[str] = None
     author: Optional[str] = None
+    publisher: Optional[str] = None
+    creator: Optional[str] = None
     year: Optional[int] = None
     model: Optional[str] = None
     mode: Optional[str] = "parallel"  # 'parallel', 'original', or 'mcp'
