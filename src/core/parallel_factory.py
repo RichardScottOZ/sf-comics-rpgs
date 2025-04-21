@@ -171,7 +171,9 @@ class ParallelAgentFactory:
         mcp_perf = metrics['performance_stats']['mcp'].get('avg', float('inf'))
         
         # Use MCP if it has better success rate and similar or better performance
-        return mcp_success_rate > original_success_rate and mcp_perf <= original_perf * 1.2
+        # Or if it's significantly faster (20% or more) even with slightly lower reliability
+        return (mcp_success_rate > original_success_rate and mcp_perf <= original_perf * 1.2) or \
+               (mcp_perf <= original_perf * 0.8 and mcp_success_rate >= original_success_rate * 0.9)
 
     def should_use_mcp(self) -> bool:
         """Determine if MCP version should be used based on metrics"""
