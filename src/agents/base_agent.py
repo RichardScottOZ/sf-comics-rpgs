@@ -5,11 +5,13 @@ import logging
 from pathlib import Path
 from ..api.openrouter_client import OpenRouterClient
 from ..config.settings import settings
+from ..core.base_agent import BaseAgent as CoreBaseAgent
 
 logger = logging.getLogger(__name__)
 
-class BaseAgent:
+class BaseAgent(CoreBaseAgent):
     def __init__(self, agent_type: str):
+        super().__init__(agent_type)
         self.agent_type = agent_type
         self.client = OpenRouterClient()
         self.cache_dir = settings.CACHE_DIR / "agents" / agent_type
@@ -45,18 +47,10 @@ class BaseAgent:
             )
             logger.info(f"Successfully received response from {model or self.client.default_model}")
             logger.debug(f"Response details: {json.dumps(result, indent=2)}")
+            return result
         except Exception as e:
             logger.error(f"Error in API request to {model or self.client.default_model}: {str(e)}")
             raise
-
-        analysis = {
-            "type": self.agent_type,
-            "timestamp": datetime.now().isoformat(),
-            "analysis": result
-        }
-
-        self._cache_analysis(cache_key, analysis)
-        return analysis
 
     def _get_cached_analysis(self, cache_key: str) -> Optional[Dict[str, Any]]:
         cache_file = self.cache_dir / f"{cache_key}.json"

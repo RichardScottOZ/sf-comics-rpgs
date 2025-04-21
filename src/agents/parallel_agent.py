@@ -3,7 +3,7 @@ from datetime import datetime
 import asyncio
 from ..core.parallel_monitor import ParallelMonitor
 from ..core.result_comparator import ResultComparator
-from ..core.base_agent import BaseAgent
+from .base_agent import BaseAgent
 
 class ParallelConfig:
     """Configuration for parallel execution"""
