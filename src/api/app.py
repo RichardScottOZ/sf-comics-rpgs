@@ -669,13 +669,21 @@ async def analyze_science_fiction_parallel(request: ParallelAnalysisRequest):
             results = await factory.execute_parallel(
                 "analysis",
                 "analyze_content",
-                request.content
+                request.content,
+                title=request.title,
+                author=request.author,
+                year=request.year,
+                model=request.model
             )
         else:
             results = await factory.execute_smart(
                 "analysis",
                 "analyze_content",
-                request.content
+                request.content,
+                title=request.title,
+                author=request.author,
+                year=request.year,
+                model=request.model
             )
             
         return {
