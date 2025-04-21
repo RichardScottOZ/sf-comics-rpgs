@@ -120,18 +120,18 @@ class ParallelAgentFactory:
             try:
                 result = await getattr(original_agent, method_name)(*args, **kwargs)
                 self.monitor.track_call("original", True)
-                return {"original": result, "mcp": None}
+                return result
             except Exception as e:
                 self.monitor.track_call("original", False, str(e))
-                return {"original": None, "mcp": None}
+                return None
         elif mode == "mcp":
             try:
                 result = await getattr(mcp_agent, method_name)(*args, **kwargs)
                 self.monitor.track_call("mcp", True)
-                return {"original": None, "mcp": result}
+                return result
             except Exception as e:
                 self.monitor.track_call("mcp", False, str(e))
-                return {"original": None, "mcp": None}
+                return None
         else:  # parallel mode
             return await self.execute_parallel(agent_name, method_name, *args, **kwargs)
 
