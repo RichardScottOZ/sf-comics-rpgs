@@ -15,6 +15,10 @@ class ParallelMonitor:
                 "mcp": 0,
                 "parallel": 0
             },
+            "success": {
+                "original": 0,
+                "mcp": 0
+            },
             "success_rate": {
                 "original": 0.0,
                 "mcp": 0.0
@@ -45,6 +49,7 @@ class ParallelMonitor:
         if success:
             self.metrics["performance_stats"][version_str].append(execution_time)
             self.metrics["resource_usage"][version_str].append(self._get_resource_usage())
+            self.metrics["success"][version_str] += 1
         else:
             self.metrics["errors"][version_str].append(str(error))
         
@@ -61,6 +66,7 @@ class ParallelMonitor:
         """Get current resource usage"""
         process = psutil.Process()
         return {
+            'timestamp': datetime.now().isoformat(),
             'cpu_percent': process.cpu_percent(),
             'memory_percent': process.memory_percent(),
             'memory_rss': process.memory_info().rss / 1024 / 1024,  # MB
@@ -114,11 +120,16 @@ class ParallelMonitor:
     
     def reset_metrics(self):
         """Reset all metrics"""
+        self.start_time = datetime.now()
         self.metrics = {
             "calls": {
                 "original": 0,
                 "mcp": 0,
                 "parallel": 0
+            },
+            "success": {
+                "original": 0,
+                "mcp": 0
             },
             "success_rate": {
                 "original": 0.0,
