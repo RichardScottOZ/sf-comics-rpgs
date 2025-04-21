@@ -134,9 +134,8 @@ class ParallelMonitor:
         
         return metrics
     
-    def reset_metrics(self):
-        """Reset all metrics"""
-        self.start_time = datetime.now()
+    def reset_metrics(self) -> Dict[str, Any]:
+        """Reset all metrics while preserving start time"""
         self.metrics = {
             "calls": {
                 "original": 0,
@@ -168,7 +167,7 @@ class ParallelMonitor:
                 "mcp": []
             }
         }
-        return {'start_time': self.start_time}
+        return {"start_time": self.start_time}
     
     def get_summary(self) -> str:
         """Get human-readable summary of metrics"""
