@@ -20,20 +20,7 @@ class ParallelAgentFactory:
     def __init__(self, config: ParallelConfig):
         self.config = config
         self.agents: Dict[str, Dict[AgentVersion, BaseAgent]] = {}
-        self.agent_classes: Dict[str, Dict[AgentVersion, Type[BaseAgent]]] = {
-            'data_source': {
-                AgentVersion.ORIGINAL: DataSourceAgent,
-                AgentVersion.MCP: MCPEnabledDataSourceAgent
-            },
-            'monitoring': {
-                AgentVersion.ORIGINAL: MonitoringAgent,
-                AgentVersion.MCP: MCPEnabledMonitoringAgent
-            },
-            'analysis': {
-                AgentVersion.ORIGINAL: AnalysisAgent,
-                AgentVersion.MCP: MCPEnabledAnalysisAgent
-            }
-        }
+        self.agent_classes: Dict[str, Dict[AgentVersion, Type[BaseAgent]]] = {}
         self.comparator = ResultComparator()
         self.monitor = ParallelMonitor()
         self.cache_dir = "cache"
@@ -89,32 +76,30 @@ class ParallelAgentFactory:
         }
         self._save_cache()
         
-    def _should_use_mcp(self, agent_type: str) -> bool:
-        """Determine if MCP version should be used based on performance and reliability"""
-        metrics = self.monitor.get_metrics()
-        
-        if not metrics["original_calls"] or not metrics["mcp_calls"]:
-            return True
-        
-        mcp_performance = metrics["mcp_performance"]
-        original_performance = metrics["original_performance"]
-        mcp_reliability = metrics["mcp_reliability"]
-        
-        return (
-            mcp_reliability >= self.reliability_threshold and
-            mcp_performance <= original_performance * (1 + self.performance_threshold)
-        )
-        
+    def register_agent_class(self, agent_type: str, original_class: Type[BaseAgent], mcp_class: Type[BaseAgent]):
+        """Register agent classes for a specific type"""
+        self.agent_classes[agent_type] = {
+            AgentVersion.ORIGINAL: original_class,
+            AgentVersion.MCP: mcp_class
+        }
+    
     def get_agent(self, agent_type: str, version: Optional[AgentVersion] = None) -> BaseAgent:
         """Get an agent instance of the specified type and version"""
-        if agent_type not in self.agents:
-            raise ValueError("Invalid agent type")
+        if agent_type not in self.agent_classes:
+            raise ValueError(f"Agent type '{agent_type}' not registered")
         
         if version is None:
             version = AgentVersion.MCP if self._should_use_mcp(agent_type) else AgentVersion.ORIGINAL
         
+        if version not in self.agent_classes[agent_type]:
+            raise ValueError(f"Version '{version}' not available for agent type '{agent_type}'")
+        
+        if agent_type not in self.agents:
+            self.agents[agent_type] = {}
+        
         if version not in self.agents[agent_type]:
-            raise ValueError("Invalid version")
+            agent_class = self.agent_classes[agent_type][version]
+            self.agents[agent_type][version] = agent_class()
         
         return self.agents[agent_type][version]
     
@@ -167,4 +152,20 @@ class ParallelAgentFactory:
         return [
             version for version in AgentVersion
             if self.config.is_version_enabled(agent_type, version)
-        ] 
+        ]
+    
+    def _should_use_mcp(self, agent_type: str) -> bool:
+        """Determine if MCP version should be used based on performance and reliability"""
+        metrics = self.monitor.get_metrics()
+        
+        if not metrics.get("original_calls") or not metrics.get("mcp_calls"):
+            return True
+        
+        mcp_performance = metrics.get("mcp_performance", float('inf'))
+        original_performance = metrics.get("original_performance", float('inf'))
+        mcp_reliability = metrics.get("mcp_reliability", 0.0)
+        
+        return (
+            mcp_reliability >= self.reliability_threshold and
+            mcp_performance <= original_performance * (1 + self.performance_threshold)
+        ) 
