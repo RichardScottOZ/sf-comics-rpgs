@@ -771,8 +771,13 @@ async def analyze_rpg_parallel(request: ParallelAnalysisRequest):
                 publisher=request.publisher,
                 model=request.model
             )
+            return {
+                "results": results,
+                "comparison": factory.get_comparison(results),
+                "metrics": factory.monitor.get_metrics()
+            }
         else:
-            results = await factory.execute_smart(
+            result = await factory.execute_smart(
                 "rpg",  # Use the registered name
                 "analyze_content",
                 request.content,
@@ -781,14 +786,13 @@ async def analyze_rpg_parallel(request: ParallelAnalysisRequest):
                 source=request.source,
                 edition=request.edition,
                 publisher=request.publisher,
-                model=request.model
+                model=request.model,
+                mode=request.mode
             )
-            
-        return {
-            "results": results,
-            "comparison": factory.get_comparison(results),
-            "metrics": factory.monitor.get_metrics()
-        }
+            return {
+                "results": result,
+                "metrics": factory.monitor.get_metrics()
+            }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
