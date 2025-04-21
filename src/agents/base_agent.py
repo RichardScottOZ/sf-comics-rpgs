@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 
 class BaseAgent(CoreBaseAgent):
     def __init__(self, agent_type: str):
+        logger.info(f"Initializing BaseAgent with type: {agent_type}")
         super().__init__(agent_type)
         self.agent_type = agent_type
+        logger.info(f"Agent type set to: {self.agent_type}")
         self.client = OpenRouterClient()
         self.cache_dir = settings.CACHE_DIR / "agents" / agent_type
         self.cache_dir.mkdir(parents=True, exist_ok=True)
