@@ -110,26 +110,30 @@ class ParallelAgentFactory:
         agent_name: str,
         method_name: str,
         *args,
+        mode: str = "parallel",
         **kwargs
     ) -> Any:
-        """Execute using smart version selection"""
-        if self._should_use_mcp(agent_name):
-            original_agent, mcp_agent = self._get_instances(agent_name)
+        """Execute using specified mode"""
+        original_agent, mcp_agent = self._get_instances(agent_name)
+        
+        if mode == "original":
+            try:
+                result = await getattr(original_agent, method_name)(*args, **kwargs)
+                self.monitor.track_call("original", True)
+                return {"original": result, "mcp": None}
+            except Exception as e:
+                self.monitor.track_call("original", False, str(e))
+                return {"original": None, "mcp": None}
+        elif mode == "mcp":
             try:
                 result = await getattr(mcp_agent, method_name)(*args, **kwargs)
                 self.monitor.track_call("mcp", True)
-                return result
+                return {"original": None, "mcp": result}
             except Exception as e:
                 self.monitor.track_call("mcp", False, str(e))
-                # Fallback to original version
-                result = await getattr(original_agent, method_name)(*args, **kwargs)
-                self.monitor.track_call("original", True)
-                return result
-        else:
-            original_agent, _ = self._get_instances(agent_name)
-            result = await getattr(original_agent, method_name)(*args, **kwargs)
-            self.monitor.track_call("original", True)
-            return result
+                return {"original": None, "mcp": None}
+        else:  # parallel mode
+            return await self.execute_parallel(agent_name, method_name, *args, **kwargs)
 
     def _should_use_mcp(self, agent_name: str) -> bool:
         """Determine whether to use MCP version based on performance metrics"""
