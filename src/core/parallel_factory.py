@@ -158,17 +158,20 @@ class ParallelAgentFactory:
         """Determine if MCP version should be used based on performance and reliability"""
         metrics = self.monitor.get_metrics()
         
-        if not metrics.get("original_calls") or not metrics.get("mcp_calls"):
+        # If we don't have enough data yet, use MCP
+        if metrics['calls']['original'] < 10 or metrics['calls']['mcp'] < 10:
             return True
+            
+        # Calculate success rates
+        original_success_rate = metrics['success_rate']['original']
+        mcp_success_rate = metrics['success_rate']['mcp']
         
-        mcp_performance = metrics.get("mcp_performance", float('inf'))
-        original_performance = metrics.get("original_performance", float('inf'))
-        mcp_reliability = metrics.get("mcp_reliability", 0.0)
+        # Calculate average performance
+        original_perf = sum(metrics['performance_stats']['original']) / len(metrics['performance_stats']['original'])
+        mcp_perf = sum(metrics['performance_stats']['mcp']) / len(metrics['performance_stats']['mcp'])
         
-        return (
-            mcp_reliability >= self.reliability_threshold and
-            mcp_performance <= original_performance * (1 + self.performance_threshold)
-        )
+        # Use MCP if it has better success rate and similar or better performance
+        return mcp_success_rate > original_success_rate and mcp_perf <= original_perf * 1.2
 
     def should_use_mcp(self) -> bool:
         """Determine if MCP version should be used based on metrics"""

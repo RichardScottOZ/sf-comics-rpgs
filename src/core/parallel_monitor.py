@@ -92,6 +92,8 @@ class ParallelMonitor:
     def get_metrics(self) -> Dict[str, Any]:
         """Get current metrics"""
         metrics = self.metrics.copy()
+        metrics["start_time"] = self.start_time
+        metrics["last_reset"] = datetime.now()
         
         # Calculate performance statistics
         metrics["performance_stats"] = {}
