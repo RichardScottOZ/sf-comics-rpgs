@@ -3,85 +3,122 @@ from .parallel_config import AgentVersion
 import json
 
 class ResultComparator:
-    """Compare results from parallel implementations"""
+    """Compare results from different versions of agents"""
     
     def __init__(self):
         self.comparison_keys = {
-            'identical': 'identical',
-            'different': 'different',
-            'missing': 'missing',
-            'extra': 'extra'
+            "title": "Title",
+            "author": "Author",
+            "year": "Year",
+            "content_summary": "Content Summary",
+            "analysis": {
+                "themes": "Themes",
+                "characters": "Characters",
+                "plot_points": "Plot Points"
+            }
         }
-    
-    def compare(self, result1: Dict[str, Any], result2: Dict[str, Any]) -> Dict[str, Any]:
-        """Compare two results and return a comparison dictionary"""
-        comparison = {
-            self.comparison_keys['identical']: [],
-            self.comparison_keys['different']: [],
-            self.comparison_keys['missing']: [],
-            self.comparison_keys['extra']: []
+
+    def compare(self, original: Any, mcp: Any) -> Dict[str, Any]:
+        """Compare original and MCP results"""
+        if original is None and mcp is None:
+            return {"status": "both_failed", "details": "Both versions failed to produce results"}
+        elif original is None:
+            return {"status": "original_failed", "details": "Original version failed"}
+        elif mcp is None:
+            return {"status": "mcp_failed", "details": "MCP version failed"}
+        
+        if isinstance(original, dict) and isinstance(mcp, dict):
+            return self._compare_dicts(original, mcp)
+        elif isinstance(original, list) and isinstance(mcp, list):
+            return self._compare_lists(original, mcp)
+        else:
+            return {
+                "status": "different_types",
+                "original_type": type(original).__name__,
+                "mcp_type": type(mcp).__name__,
+                "original": str(original),
+                "mcp": str(mcp)
+            }
+
+    def _compare_dicts(self, original: Dict[str, Any], mcp: Dict[str, Any]) -> Dict[str, Any]:
+        """Compare two dictionaries"""
+        result = {
+            "status": "identical",
+            "differences": {},
+            "missing_in_original": [],
+            "missing_in_mcp": [],
+            "extra_in_original": [],
+            "extra_in_mcp": []
         }
         
-        self._compare_dicts(result1, result2, comparison, [])
-        return comparison
-    
-    def _compare_dicts(self, dict1: Dict[str, Any], dict2: Dict[str, Any], 
-                      comparison: Dict[str, List[str]], path: List[str]) -> None:
-        """Recursively compare two dictionaries"""
-        # Check keys in dict1
-        for key in dict1:
-            current_path = path + [key]
-            path_str = '.'.join(current_path)
-            
-            if key not in dict2:
-                comparison[self.comparison_keys['missing']].append(path_str)
-                continue
-            
-            value1 = dict1[key]
-            value2 = dict2[key]
-            
-            if isinstance(value1, dict) and isinstance(value2, dict):
-                self._compare_dicts(value1, value2, comparison, current_path)
-            elif isinstance(value1, list) and isinstance(value2, list):
-                self._compare_lists(value1, value2, comparison, current_path)
-            elif value1 == value2:
-                comparison[self.comparison_keys['identical']].append(path_str)
-            else:
-                comparison[self.comparison_keys['different']].append(path_str)
+        # Compare keys present in both
+        for key in set(original.keys()) & set(mcp.keys()):
+            if original[key] != mcp[key]:
+                result["status"] = "different"
+                result["differences"][key] = {
+                    "original": original[key],
+                    "mcp": mcp[key]
+                }
         
-        # Check for extra keys in dict2
-        for key in dict2:
-            if key not in dict1:
-                path_str = '.'.join(path + [key])
-                comparison[self.comparison_keys['extra']].append(path_str)
-    
-    def _compare_lists(self, list1: List[Any], list2: List[Any], 
-                      comparison: Dict[str, List[str]], path: List[str]) -> None:
+        # Check for missing keys
+        for key in set(mcp.keys()) - set(original.keys()):
+            result["status"] = "different"
+            result["missing_in_original"].append(key)
+        
+        for key in set(original.keys()) - set(mcp.keys()):
+            result["status"] = "different"
+            result["missing_in_mcp"].append(key)
+        
+        return result
+
+    def _compare_lists(self, original: List[Any], mcp: List[Any]) -> Dict[str, Any]:
         """Compare two lists"""
-        path_str = '.'.join(path)
+        result = {
+            "status": "identical",
+            "differences": [],
+            "missing_in_original": [],
+            "missing_in_mcp": []
+        }
         
-        if len(list1) != len(list2):
-            comparison[self.comparison_keys['different']].append(f"{path_str}.length")
-            return
+        if len(original) != len(mcp):
+            result["status"] = "different"
+            result["differences"].append({
+                "type": "length_mismatch",
+                "original_length": len(original),
+                "mcp_length": len(mcp)
+            })
         
-        for i, (item1, item2) in enumerate(zip(list1, list2)):
-            current_path = path + [str(i)]
-            
-            if isinstance(item1, dict) and isinstance(item2, dict):
-                self._compare_dicts(item1, item2, comparison, current_path)
-            elif isinstance(item1, list) and isinstance(item2, list):
-                self._compare_lists(item1, item2, comparison, current_path)
-            elif item1 == item2:
-                comparison[self.comparison_keys['identical']].append('.'.join(current_path))
-            else:
-                comparison[self.comparison_keys['different']].append('.'.join(current_path))
-    
-    def get_summary(self, comparison: Dict[str, List[str]]) -> str:
-        """Get a human-readable summary of the comparison"""
+        # Compare elements
+        for i, (orig_item, mcp_item) in enumerate(zip(original, mcp)):
+            if orig_item != mcp_item:
+                result["status"] = "different"
+                result["differences"].append({
+                    "index": i,
+                    "original": orig_item,
+                    "mcp": mcp_item
+                })
+        
+        return result
+
+    def get_summary(self, comparison: Dict[str, Any]) -> str:
+        """Get human-readable summary of comparison"""
+        if comparison["status"] == "identical":
+            return "Results are identical"
+        
         summary = []
-        for key, paths in comparison.items():
-            if paths:
-                summary.append(f"{key}: {len(paths)} differences")
-                for path in paths:
-                    summary.append(f"  - {path}")
-        return '\n'.join(summary) 
+        if comparison["status"] == "different":
+            if "differences" in comparison:
+                for key, diff in comparison["differences"].items():
+                    summary.append(f"Different {key}:")
+                    summary.append(f"  Original: {diff['original']}")
+                    summary.append(f"  MCP: {diff['mcp']}")
+            
+            if comparison.get("missing_in_original"):
+                summary.append("Missing in original version:")
+                summary.extend(f"  - {key}" for key in comparison["missing_in_original"])
+            
+            if comparison.get("missing_in_mcp"):
+                summary.append("Missing in MCP version:")
+                summary.extend(f"  - {key}" for key in comparison["missing_in_mcp"])
+        
+        return "\n".join(summary) 
