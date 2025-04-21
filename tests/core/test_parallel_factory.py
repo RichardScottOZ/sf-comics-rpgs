@@ -7,6 +7,7 @@ from src.core.parallel_factory import ParallelAgentFactory
 from src.core.parallel_config import ParallelConfig, AgentVersion
 from src.core.base_agent import BaseAgent
 from src.core.result_comparator import ResultComparator
+from src.core.parallel_monitor import ParallelMonitor
 
 class MockAgent(BaseAgent):
     async def test_method(self, *args, **kwargs):
@@ -28,9 +29,12 @@ def factory():
 def cache_dir(tmp_path):
     return tmp_path / "cache"
 
-def test_initialization(factory):
+def test_initialization():
     """Test factory initialization"""
-    assert factory.config is not None
+    config = ParallelConfig()
+    factory = ParallelAgentFactory(config)
+    
+    assert isinstance(factory.config, ParallelConfig)
     assert isinstance(factory.agents, dict)
     assert isinstance(factory.comparator, ResultComparator)
     assert isinstance(factory.monitor, ParallelMonitor)
@@ -53,13 +57,13 @@ def test_get_agent(factory):
 
 def test_get_agent_invalid_type(factory):
     """Test getting agent with invalid type"""
-    with pytest.raises(ValueError, match="Version .* not enabled for agent type"):
-        factory.get_agent('invalid_type')
+    with pytest.raises(ValueError, match="Invalid agent type"):
+        factory.get_agent("invalid_type")
 
 def test_get_agent_invalid_version(factory):
     """Test getting agent with invalid version"""
-    with pytest.raises(ValueError, match="Version .* not enabled for agent type"):
-        factory.get_agent('test', 'invalid_version')
+    with pytest.raises(ValueError, match="Invalid version"):
+        factory.get_agent("test", "invalid_version")
 
 @pytest.mark.asyncio
 async def test_execute_version(factory):
@@ -76,27 +80,27 @@ async def test_execute_version_error(factory):
 @pytest.mark.asyncio
 async def test_execute_parallel(factory):
     """Test parallel execution"""
-    results = await factory.execute_parallel('test', 'test_method', 'arg1', kwarg1='value1')
+    results = await factory.execute_parallel("test", "test_method", "arg1", kwarg1="value1")
     
     assert str(AgentVersion.ORIGINAL) in results
     assert str(AgentVersion.MCP) in results
-    assert results[str(AgentVersion.ORIGINAL)] == {"args": ('arg1',), "kwargs": {'kwarg1': 'value1'}}
-    assert results[str(AgentVersion.MCP)] == {"args": ('arg1',), "kwargs": {'kwarg1': 'value1'}}
+    assert results[str(AgentVersion.ORIGINAL)] == {"args": ("arg1",), "kwargs": {"kwarg1": "value1"}}
+    assert results[str(AgentVersion.MCP)] == {"args": ("arg1",), "kwargs": {"kwarg1": "value1"}}
 
 @pytest.mark.asyncio
 async def test_execute_smart(factory):
     """Test smart execution"""
     # First call should use MCP (default)
-    result = await factory.execute_smart('test', 'test_method', 'arg1')
+    result = await factory.execute_smart("test", "test_method", "arg1")
     assert str(AgentVersion.MCP) in result
     
     # Add some performance data
     for _ in range(15):
-        await factory._execute_version('test', AgentVersion.ORIGINAL, 'test_method', 'arg1')
-        await factory._execute_version('test', AgentVersion.MCP, 'test_method', 'arg1')
+        await factory._execute_version("test", AgentVersion.ORIGINAL, "test_method", "arg1")
+        await factory._execute_version("test", AgentVersion.MCP, "test_method", "arg1")
     
     # Now should choose based on performance
-    result = await factory.execute_smart('test', 'test_method', 'arg1')
+    result = await factory.execute_smart("test", "test_method", "arg1")
     assert len(result) == 1
     assert list(result.keys())[0] in [str(AgentVersion.ORIGINAL), str(AgentVersion.MCP)]
 
@@ -141,7 +145,7 @@ def test_cache_operations(factory, cache_dir):
 def test_should_use_mcp(factory):
     """Test MCP version selection logic"""
     # With no data, should use MCP
-    assert factory._should_use_mcp('test') is True
+    assert factory._should_use_mcp("test") is True
     
     # Add some performance data
     for _ in range(15):
@@ -149,18 +153,18 @@ def test_should_use_mcp(factory):
         factory.monitor.track_call(AgentVersion.MCP, success=True, execution_time=0.4)
     
     # MCP is faster, should use MCP
-    assert factory._should_use_mcp('test') is True
+    assert factory._should_use_mcp("test") is True
     
     # Make MCP slower
     for _ in range(5):
         factory.monitor.track_call(AgentVersion.MCP, success=True, execution_time=0.6)
     
     # Original is now faster, should use original
-    assert factory._should_use_mcp('test') is False
+    assert factory._should_use_mcp("test") is False
     
     # Make MCP unreliable
     for _ in range(5):
         factory.monitor.track_call(AgentVersion.MCP, success=False, execution_time=0.4)
     
     # MCP is unreliable, should use original
-    assert factory._should_use_mcp('test') is False 
+    assert factory._should_use_mcp("test") is False 

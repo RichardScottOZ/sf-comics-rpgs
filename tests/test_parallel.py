@@ -46,34 +46,45 @@ async def test_parallel_factory(factory):
     assert 'items' in results[AgentVersion.ORIGINAL]
     assert 'items' in results[AgentVersion.MCP]
 
-def test_result_comparator(comparator):
-    """Test result comparison"""
-    original_result = {
-        'items': [
-            {'id': 1, 'title': 'Dune', 'year': 2021},
-            {'id': 2, 'title': 'Dune: Part Two', 'year': 2024}
-        ],
-        'execution_time': 0.5
-    }
+def test_result_comparator():
+    """Test the result comparator"""
+    comparator = ResultComparator()
     
-    mcp_result = {
-        'items': [
-            {'id': 1, 'title': 'Dune', 'year': 2021},
-            {'id': 3, 'title': 'Dune (1984)', 'year': 1984}
-        ],
-        'execution_time': 0.3
-    }
+    # Test identical results
+    result1 = {"data": "test", "count": 5}
+    result2 = {"data": "test", "count": 5}
+    comparison = comparator.compare(result1, result2)
+    assert len(comparison["identical"]) == 2
+    assert len(comparison["different"]) == 0
+    assert len(comparison["missing"]) == 0
+    assert len(comparison["extra"]) == 0
     
-    comparison = comparator.compare_results(original_result, mcp_result)
-    assert 'common_items' in comparison
-    assert 'unique_to_original' in comparison
-    assert 'unique_to_mcp' in comparison
-    assert 'differences' in comparison
+    # Test different results
+    result1 = {"data": "test", "count": 5}
+    result2 = {"data": "different", "count": 10}
+    comparison = comparator.compare(result1, result2)
+    assert len(comparison["identical"]) == 0
+    assert len(comparison["different"]) == 2
+    assert len(comparison["missing"]) == 0
+    assert len(comparison["extra"]) == 0
     
-    summary = comparator.get_summary(comparison)
-    assert 'Common items: 1' in summary
-    assert 'Unique to original: 1' in summary
-    assert 'Unique to MCP: 1' in summary
+    # Test missing keys
+    result1 = {"data": "test", "count": 5}
+    result2 = {"data": "test"}
+    comparison = comparator.compare(result1, result2)
+    assert len(comparison["identical"]) == 1
+    assert len(comparison["different"]) == 0
+    assert len(comparison["missing"]) == 1
+    assert len(comparison["extra"]) == 0
+    
+    # Test extra keys
+    result1 = {"data": "test"}
+    result2 = {"data": "test", "count": 5}
+    comparison = comparator.compare(result1, result2)
+    assert len(comparison["identical"]) == 1
+    assert len(comparison["different"]) == 0
+    assert len(comparison["missing"]) == 0
+    assert len(comparison["extra"]) == 1
 
 def test_parallel_monitor(monitor):
     """Test parallel monitoring"""
